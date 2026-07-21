@@ -28,6 +28,14 @@ function MealsPage() {
       : undefined);
   const budget = budgetFromBackend ?? selectedTrip?.meal_budget_daily ?? 0;
   const budgetAvailable = budget > 0;
+  const cityAdjustment =
+    selectedTrip?.meal_city_adjustment_applied ??
+    snapshot?.city_adjustment_applied ??
+    false;
+  const cityAdjustmentLabel =
+    selectedTrip?.meal_city_adjustment_label ??
+    snapshot?.city_adjustment_label ??
+    "Maggiorazione città applicata";
 
   const meals = useMemo(
     () => expenses.filter((e) => MEAL_CATEGORIES.includes(e.category)),
@@ -62,6 +70,9 @@ function MealsPage() {
         <p className="mt-0.5 text-xs text-muted-foreground">
           {budgetAvailable ? `Budget giornaliero ${eur(budget)}` : "Regole pasti non disponibili"}
         </p>
+        {budgetAvailable && cityAdjustment && (
+          <p className="mt-0.5 text-[11px] font-medium text-primary">{cityAdjustmentLabel}</p>
+        )}
       </header>
 
       <TripHeader label="Trasferta selezionata" />
