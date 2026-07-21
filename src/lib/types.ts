@@ -152,6 +152,8 @@ export interface ParsedTripFields {
   city?: string;
   start_date?: string;
   end_date?: string;
+  start_time?: string;
+  end_time?: string;
   notes?: string;
 }
 
