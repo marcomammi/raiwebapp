@@ -43,7 +43,6 @@ di calcolo e PDF: l'app non duplica dati, li consuma via API.
 - `POST /api/trips/:id/expenses`, `PATCH /api/expenses/:id`, `DELETE /api/expenses/:id`
 - `POST /api/trips/:id/generate-pdf`, `POST /api/trips/:id/email-pdf`
 - `POST /api/trips` (creazione trasferta), `POST /api/travel-documents/parse` (upload biglietto)
-- `PATCH /api/me` (aggiornamento del proprio profilo, es. `mealProfile`)
 
 ### Configurazione
 
@@ -66,15 +65,17 @@ Il backend `https://rai.marcomammi.com/api` è la fonte unica per utenti,
 trasferte, spese, budget e PDF. Nessun account demo, nessuna password è
 hard-coded nel codice.
 
-### Profilo pasti
+### Regole pasti
 
-Il calcolo del budget pasti dipende dal profilo dell'utente:
-`mealProfile: "standard" | "enhanced"` (oppure `enhancedMealProfile: true|false`).
-Il flag è modificabile dall'utente nel proprio profilo e dall'admin nella
-gestione utenti; non viene chiesto ad ogni creazione trasferta. I valori
-esatti (budget giornaliero, forfait, cap pasto) arrivano dal backend, tipicamente
-in `meal_rules_snapshot` sulla trasferta. Se i valori non sono presenti l'app
-mostra `Regole pasti non disponibili`, senza inventare importi.
+Il calcolo del budget pasti dipende esclusivamente dalle regole restituite
+dal backend per la singola trasferta, in base alla città/destinazione. Non
+esistono flag utente o admin per la maggiorazione: quando applicabile, il
+backend imposta `meal_city_adjustment_applied` (con eventuale
+`meal_city_adjustment_label`) e restituisce i valori esatti — tipicamente in
+`meal_rules_snapshot` (`daily_budget`, `lunch_budget`, `dinner_budget`,
+`forfait_amount`, `currency`). Se il backend non restituisce regole pasti,
+l'app mostra `Regole pasti non disponibili` senza inventare importi. L'app
+non conserva alcun elenco di città o valori di policy.
 
 ### Pasti (tab)
 

@@ -32,7 +32,6 @@ export type PaidBy = "employee" | "company";
 export type SyncStatus = "synced" | "pending" | "error";
 export type MealMode = "receipt" | "forfait";
 export type MealType = "lunch" | "dinner";
-export type MealProfile = "standard" | "enhanced";
 
 export interface Expense {
   id: string;
@@ -67,15 +66,22 @@ export interface Trip {
   has_pdf?: boolean;
   /** Snapshot delle regole pasti dal backend (valori esatti). */
   meal_rules_snapshot?: MealRulesSnapshot;
+  /** true se il backend ha applicato una maggiorazione pasti per la città. */
+  meal_city_adjustment_applied?: boolean;
+  /** Etichetta neutra fornita dal backend (es. "Maggiorazione città applicata"). */
+  meal_city_adjustment_label?: string;
+  lunch_budget?: number;
+  dinner_budget?: number;
 }
 
 export interface MealRulesSnapshot {
-  profile?: MealProfile;
   lunch_budget?: number;
   dinner_budget?: number;
   daily_budget?: number;
   forfait_amount?: number;
   currency?: string;
+  city_adjustment_applied?: boolean;
+  city_adjustment_label?: string;
 }
 
 export interface TrainSegment {
@@ -101,7 +107,6 @@ export interface UserProfile {
   role: UserRole;
   status: UserStatus;
   default_meal_budget: number;
-  mealProfile: MealProfile;
   createdAt: string;
   /** Derived: `${firstName} ${lastName}`. */
   name: string;
@@ -120,6 +125,5 @@ export interface AppUser {
   employeeNumber: string;
   role: UserRole;
   status: UserStatus;
-  mealProfile: MealProfile;
   createdAt: string;
 }
