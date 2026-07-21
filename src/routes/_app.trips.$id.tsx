@@ -112,12 +112,28 @@ function TripDetail() {
           {(trip.city ?? trip.destination) ? ` · ${trip.city ?? trip.destination}` : ""}
         </p>
 
-        <button
-          onClick={() => setSettingsSheet(true)}
-          className="mt-4 w-full h-12 rounded-xl border border-border bg-card text-sm font-medium flex items-center justify-center gap-2 active:bg-accent"
+        <div
+          data-ui-version="trip-edit-card-v2"
+          className="mt-4 rounded-2xl border border-border bg-card p-4 flex items-center gap-3 shadow-sm"
         >
-          <Settings2 className="h-4 w-4" /> Modifica impostazioni
-        </button>
+          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0">
+            <Settings2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold">Impostazioni trasferta</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              Nome, località, date, orari, anticipo e budget pasti
+            </div>
+          </div>
+          <button
+            type="button"
+            data-testid="edit-trip-settings"
+            onClick={() => setSettingsSheet(true)}
+            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-1.5 active:scale-[0.98] shadow-sm shrink-0"
+          >
+            <Pencil className="h-4 w-4" /> Modifica
+          </button>
+        </div>
 
         {trip.status === "closed" && (
           <div className="mt-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-3 py-2 text-xs">
