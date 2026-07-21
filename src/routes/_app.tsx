@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate, useRouter } fr
 import { useEffect } from "react";
 import { Briefcase, Receipt, UtensilsCrossed, User, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { SelectedTripProvider } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app")({
@@ -56,6 +57,7 @@ function AppShell() {
   const hideChrome = path.startsWith("/new-expense");
 
   return (
+    <SelectedTripProvider>
     <div className="min-h-[100dvh] bg-background text-foreground">
       <main className={cn("mx-auto w-full max-w-md", hideChrome ? "" : "pb-32")}>
         <Outlet />
@@ -95,5 +97,6 @@ function AppShell() {
         </>
       )}
     </div>
+    </SelectedTripProvider>
   );
 }
