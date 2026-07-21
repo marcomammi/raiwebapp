@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { z } from "zod";
 import { createExpense, getTrips } from "@/lib/api";
-import { EXPENSE_CATEGORIES, type ExpenseCategory, type PaidBy } from "@/lib/types";
+import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
 import { categoryIcon, todayISO } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,10 +36,14 @@ function NewExpensePage() {
   const [note, setNote] = useState("");
   const [paidBy, setPaidBy] = useState<PaidBy>("employee");
   const [receipt, setReceipt] = useState<string | undefined>(undefined);
+  const [forfait, setForfait] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // keep in sync if trips load after mount
   if (!tripId && defaultTrip) setTripId(defaultTrip);
+
+  const isMeal = MEAL_CATEGORIES.includes(category);
+  const mealType = category === "Pranzo" ? "lunch" : category === "Cena" ? "dinner" : undefined;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +52,14 @@ function NewExpensePage() {
     if (!tripId) return toast.error("Seleziona una trasferta");
     setSaving(true);
     try {
+      const mealMode: MealMode | undefined = isMeal ? (forfait ? "forfait" : "receipt") : undefined;
       await createExpense(tripId, {
         category, amount: n, date, note: note || undefined,
-        paid_by: paidBy, receipt_url: receipt, source: "app",
+        paid_by: paidBy,
+        receipt_url: forfait ? undefined : receipt,
+        source: "app",
+        meal_mode: mealMode,
+        meal_type: mealType,
       });
       qc.invalidateQueries({ queryKey: ["expenses"] });
       qc.invalidateQueries({ queryKey: ["expenses", tripId] });
