@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTripsRouteImport } from './routes/_app.trips'
 import { Route as AppShortcutsRouteImport } from './routes/_app.shortcuts'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
+import { Route as AppNewTripRouteImport } from './routes/_app.new-trip'
 import { Route as AppNewExpenseRouteImport } from './routes/_app.new-expense'
 import { Route as AppMealsRouteImport } from './routes/_app.meals'
 import { Route as AppExpensesRouteImport } from './routes/_app.expenses'
@@ -50,6 +51,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNewTripRoute = AppNewTripRouteImport.update({
+  id: '/new-trip',
+  path: '/new-trip',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNewExpenseRoute = AppNewExpenseRouteImport.update({
   id: '/new-expense',
   path: '/new-expense',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/expenses': typeof AppExpensesRoute
   '/meals': typeof AppMealsRoute
   '/new-expense': typeof AppNewExpenseRoute
+  '/new-trip': typeof AppNewTripRoute
   '/profile': typeof AppProfileRoute
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof AppExpensesRoute
   '/meals': typeof AppMealsRoute
   '/new-expense': typeof AppNewExpenseRoute
+  '/new-trip': typeof AppNewTripRoute
   '/profile': typeof AppProfileRoute
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_app/expenses': typeof AppExpensesRoute
   '/_app/meals': typeof AppMealsRoute
   '/_app/new-expense': typeof AppNewExpenseRoute
+  '/_app/new-trip': typeof AppNewTripRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/shortcuts': typeof AppShortcutsRoute
   '/_app/trips': typeof AppTripsRouteWithChildren
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/meals'
     | '/new-expense'
+    | '/new-trip'
     | '/profile'
     | '/shortcuts'
     | '/trips'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/meals'
     | '/new-expense'
+    | '/new-trip'
     | '/profile'
     | '/shortcuts'
     | '/trips'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/_app/expenses'
     | '/_app/meals'
     | '/_app/new-expense'
+    | '/_app/new-trip'
     | '/_app/profile'
     | '/_app/shortcuts'
     | '/_app/trips'
@@ -204,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/new-trip': {
+      id: '/_app/new-trip'
+      path: '/new-trip'
+      fullPath: '/new-trip'
+      preLoaderRoute: typeof AppNewTripRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/new-expense': {
       id: '/_app/new-expense'
       path: '/new-expense'
@@ -258,6 +277,7 @@ interface AppRouteChildren {
   AppExpensesRoute: typeof AppExpensesRoute
   AppMealsRoute: typeof AppMealsRoute
   AppNewExpenseRoute: typeof AppNewExpenseRoute
+  AppNewTripRoute: typeof AppNewTripRoute
   AppProfileRoute: typeof AppProfileRoute
   AppShortcutsRoute: typeof AppShortcutsRoute
   AppTripsRoute: typeof AppTripsRouteWithChildren
@@ -268,6 +288,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppExpensesRoute: AppExpensesRoute,
   AppMealsRoute: AppMealsRoute,
   AppNewExpenseRoute: AppNewExpenseRoute,
+  AppNewTripRoute: AppNewTripRoute,
   AppProfileRoute: AppProfileRoute,
   AppShortcutsRoute: AppShortcutsRoute,
   AppTripsRoute: AppTripsRouteWithChildren,

@@ -42,6 +42,8 @@ di calcolo e PDF: l'app non duplica dati, li consuma via API.
 - `GET /api/trips`, `GET /api/trips/:id`
 - `POST /api/trips/:id/expenses`, `PATCH /api/expenses/:id`, `DELETE /api/expenses/:id`
 - `POST /api/trips/:id/generate-pdf`, `POST /api/trips/:id/email-pdf`
+- `POST /api/trips` (creazione trasferta), `POST /api/travel-documents/parse` (upload biglietto)
+- `PATCH /api/me` (aggiornamento del proprio profilo, es. `mealProfile`)
 
 ### Configurazione
 
@@ -63,3 +65,27 @@ In `src/lib/config.ts`:
 Il backend `https://rai.marcomammi.com/api` è la fonte unica per utenti,
 trasferte, spese, budget e PDF. Nessun account demo, nessuna password è
 hard-coded nel codice.
+
+### Profilo pasti
+
+Il calcolo del budget pasti dipende dal profilo dell'utente:
+`mealProfile: "standard" | "enhanced"` (oppure `enhancedMealProfile: true|false`).
+Il flag è modificabile dall'utente nel proprio profilo e dall'admin nella
+gestione utenti; non viene chiesto ad ogni creazione trasferta. I valori
+esatti (budget giornaliero, forfait, cap pasto) arrivano dal backend, tipicamente
+in `meal_rules_snapshot` sulla trasferta. Se i valori non sono presenti l'app
+mostra `Regole pasti non disponibili`, senza inventare importi.
+
+### Pasti (tab)
+
+La tab Pasti considera esclusivamente `Pranzo` e `Cena` (inclusi pasti a
+forfait). Colazione, hotel, treno, taxi ecc. restano nella tab Spese.
+Le spese pasto possono essere `meal_mode: "receipt" | "forfait"` con
+`meal_type: "lunch" | "dinner"`.
+
+### Trasferte passate in preview
+
+La lista `/api/trips` è la fonte unica. Gli stati `closed`, `completed`,
+`archived` sono normalizzati come "Trasferte passate". In preview senza dati,
+la home mostra un empty state con `Riprova` e `Nuova trasferta` invece di
+dati fittizi.

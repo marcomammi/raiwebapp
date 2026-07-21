@@ -20,7 +20,14 @@ function MealsPage() {
     queryFn: () => (selectedTripId ? getExpensesForTrip(selectedTripId) : Promise.resolve([])),
     enabled: !!selectedTripId,
   });
-  const budget = selectedTrip?.meal_budget_daily ?? 46.48;
+  const snapshot = selectedTrip?.meal_rules_snapshot;
+  const budgetFromBackend =
+    snapshot?.daily_budget ??
+    (snapshot && (snapshot.lunch_budget || snapshot.dinner_budget)
+      ? (snapshot.lunch_budget ?? 0) + (snapshot.dinner_budget ?? 0)
+      : undefined);
+  const budget = budgetFromBackend ?? selectedTrip?.meal_budget_daily ?? 0;
+  const budgetAvailable = budget > 0;
 
   const meals = useMemo(
     () => expenses.filter((e) => MEAL_CATEGORIES.includes(e.category)),
@@ -52,7 +59,9 @@ function MealsPage() {
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">
           {selectedTrip ? selectedTrip.title : "Nessuna trasferta"}
         </h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">Budget giornaliero {eur(budget)}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {budgetAvailable ? `Budget giornaliero ${eur(budget)}` : "Regole pasti non disponibili"}
+        </p>
       </header>
 
       <TripHeader label="Trasferta selezionata" />

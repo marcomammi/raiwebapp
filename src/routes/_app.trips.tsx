@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FileText, Circle, CheckCircle2 } from "lucide-react";
+import { ChevronRight, FileText, Circle, CheckCircle2, Plus } from "lucide-react";
 import { getAllExpenses } from "@/lib/api";
 import { eur, formatDate } from "@/lib/format";
 import type { Trip, TripStatus } from "@/lib/types";
@@ -25,7 +25,7 @@ const STATUS_COLOR: Record<TripStatus, string> = {
 };
 
 function TripsPage() {
-  const { trips, isLoading, selectedTripId, setSelectedTripId } = useSelectedTrip();
+  const { trips, isLoading, selectedTripId, setSelectedTripId, refetch, isError } = useSelectedTrip();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
 
   const totals = useMemo(() => {
@@ -40,13 +40,41 @@ function TripsPage() {
 
   return (
     <div>
-      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Il tuo diario</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Trasferte</h1>
+      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Il tuo diario</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Trasferte</h1>
+        </div>
+        <Link
+          to="/new-trip"
+          className="mt-2 h-10 px-3 rounded-full bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1 active:scale-95 shrink-0"
+        >
+          <Plus className="h-4 w-4" /> Nuova
+        </Link>
       </header>
 
       {isLoading ? (
         <div className="px-5 py-10 text-sm text-muted-foreground">Caricamento…</div>
+      ) : trips.length === 0 ? (
+        <div className="px-4">
+          <div className="rounded-2xl bg-card border border-border p-6 text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {isError
+                ? "Impossibile contattare il sito. Riprova tra poco."
+                : "Le trasferte saranno caricate dal sito appena il collegamento dati è attivo."}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => refetch()}
+                className="h-10 px-4 rounded-lg border border-border bg-card text-sm"
+              >Riprova</button>
+              <Link
+                to="/new-trip"
+                className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm inline-flex items-center"
+              >Nuova trasferta</Link>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="px-4 space-y-6">
           <section>
