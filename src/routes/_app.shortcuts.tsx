@@ -27,8 +27,9 @@ function ShortcutsPage() {
       </header>
       <div className="px-5 pb-3">
         <p className="text-sm text-muted-foreground">
-          Queste azioni sono pronte per essere collegate a Comandi Rapidi Apple. Ogni scorciatoia
-          invierà la spesa al server con lo stesso endpoint dell'app.
+          Queste azioni sono pronte per essere collegate a Comandi Rapidi Apple. La scorciatoia
+          chiede solo importo e categoria: la spesa viene aggiunta automaticamente alla
+          trasferta in corso tramite <span className="font-mono">POST /trips/current/expenses</span>.
         </p>
       </div>
       <div className="px-4 grid grid-cols-1 gap-2">
@@ -49,9 +50,8 @@ function ShortcutsPage() {
       </div>
       <div className="px-5 mt-6">
         <div className="rounded-2xl border border-dashed border-border p-4 text-[11px] text-muted-foreground font-mono whitespace-pre-wrap break-all">
-{`POST /api/trips/:id/expenses
+{`POST /api/trips/current/expenses
 {
-  "trip_id": "123",
   "category": "Pranzo",
   "amount": 18.50,
   "date": "2026-07-21",

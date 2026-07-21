@@ -12,7 +12,7 @@ import {
   type PaidBy,
   type Trip,
 } from "@/lib/types";
-import { categoryIcon } from "@/lib/format";
+import { categoryIcon, formatAmountInput, normalizeAmountInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isMealAllowed } from "@/lib/trip-utils";
 
@@ -45,7 +45,7 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   const availableCategories = useMemo(() => allowedCategoriesFor(expense.id), [expense.id]);
   const categoryLocked = availableCategories.length === 1;
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
-  const [amount, setAmount] = useState(String(expense.amount).replace(".", ","));
+  const [amount, setAmount] = useState(formatAmountInput(expense.amount));
   const [date, setDate] = useState(expense.date);
   const [paidBy, setPaidBy] = useState<PaidBy>(expense.paid_by);
   const [note, setNote] = useState(expense.note ?? "");
@@ -59,7 +59,7 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   const forfaitAvailable = typeof forfaitAmount === "number" && forfaitAmount > 0;
   const amountLocked = isMeal && forfait;
   const displayedAmount = amountLocked && forfaitAvailable
-    ? String(forfaitAmount).replace(".", ",")
+    ? formatAmountInput(forfaitAmount)
     : amount;
 
   const mealCheck = useMemo(
@@ -97,18 +97,21 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
     if (mealBlocked) return toast.error(mealMessage!);
     const effective = amountLocked
       ? (forfaitAvailable ? String(forfaitAmount) : "")
-      : amount;
+      : amount.replace(",", ".");
     if (amountLocked && !forfaitAvailable) {
       return toast.error("Importo forfait non disponibile");
     }
-    const n = Number(effective.replace(",", "."));
+    const n = Number(effective);
     if (!Number.isFinite(n) || n <= 0) return toast.error("Importo non valido");
+    // Normalizza a 2 decimali per riflettere il valore effettivo salvato.
+    const rounded = Math.round(n * 100) / 100;
+    setAmount(formatAmountInput(rounded));
     setBusy("save");
     try {
       const meal_mode: MealMode | undefined = isMeal ? (forfait ? "forfait" : "receipt") : undefined;
       await updateExpense(expense.id, {
         category,
-        amount: n,
+        amount: rounded,
         date,
         paid_by: paidBy,
         note: note || undefined,
@@ -171,6 +174,7 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
                 value={displayedAmount}
                 readOnly={amountLocked}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                onBlur={() => !amountLocked && setAmount((v) => normalizeAmountInput(v))}
                 className={cn(
                   "w-40 text-center text-4xl font-semibold tabular-nums bg-transparent border-0 focus:outline-none",
                   amountLocked && "text-muted-foreground",
