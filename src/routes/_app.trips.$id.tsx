@@ -256,8 +256,7 @@ function StatCard({ label, value, tone, accent }: { label: string; value: string
   );
 }
 
-function ExpensesList({ expenses, tripId }: { expenses: Expense[]; tripId: string }) {
-  const qc = useQueryClient();
+function ExpensesList({ expenses, tripId, onEdit }: { expenses: Expense[]; tripId: string; onEdit: (e: Expense) => void }) {
   if (expenses.length === 0)
     return <EmptyState tripId={tripId} text="Nessuna spesa ancora inserita." />;
   const grouped = groupByDate(expenses);
@@ -266,12 +265,7 @@ function ExpensesList({ expenses, tripId }: { expenses: Expense[]; tripId: strin
       {grouped.map(([date, items]) => (
         <DayGroup key={date} date={date} items={items}>
           {items.map((e) => (
-            <ExpenseRow key={e.id} e={e} onDelete={async () => {
-              await deleteExpense(e.id);
-              qc.invalidateQueries({ queryKey: ["expenses", tripId] });
-              qc.invalidateQueries({ queryKey: ["expenses", "all"] });
-              toast.success("Spesa eliminata");
-            }} />
+            <ExpenseRow key={e.id} e={e} onClick={() => onEdit(e)} />
           ))}
         </DayGroup>
       ))}
@@ -279,28 +273,58 @@ function ExpensesList({ expenses, tripId }: { expenses: Expense[]; tripId: strin
   );
 }
 
-function MealsList({ expenses, budget }: { expenses: Expense[]; budget: number }) {
+function MealsList({ expenses, trip, onEdit }: { expenses: Expense[]; trip: Trip; onEdit: (e: Expense) => void }) {
   const meals = expenses.filter((e) => MEAL_CATEGORIES.includes(e.category));
-  if (meals.length === 0)
+  const entitlements = getEntitlements(trip);
+  const byDate = new Map<string, Expense[]>();
+  for (const e of meals) {
+    const arr = byDate.get(e.date) ?? [];
+    arr.push(e);
+    byDate.set(e.date, arr);
+  }
+  const dates = new Set<string>();
+  for (const en of entitlements) dates.add(en.date);
+  for (const d of byDate.keys()) dates.add(d);
+  const rows = Array.from(dates).sort((a, b) => (a < b ? 1 : -1));
+  if (rows.length === 0)
     return <div className="rounded-2xl bg-card border border-border p-6 text-sm text-muted-foreground text-center">Nessun pasto registrato.</div>;
-  const grouped = groupByDate(meals);
   return (
     <div className="space-y-4">
-      {grouped.map(([date, items]) => {
-        const dayTotal = items.reduce((s, e) => s + e.amount, 0);
-        const over = dayTotal > budget;
+      {rows.map((date) => {
+        const items = byDate.get(date) ?? [];
+        const en = entitlements.find((x) => x.date === date);
+        const dayBudget = en ? entitlementBudget(en) : 0;
+        const dayTotal = sumCountable(items);
+        const hasBudget = dayBudget > 0;
+        const over = hasBudget && dayTotal > dayBudget;
+        const parts: string[] = [];
+        if (en?.lunch_allowed) parts.push(en.lunch_label ?? "Pranzo");
+        if (en?.dinner_allowed) parts.push(en.dinner_label ?? "Cena");
         return (
           <div key={date}>
             <div className="flex items-baseline justify-between px-1 mb-1.5">
               <div className="text-sm font-medium capitalize">{formatDayHeader(date)}</div>
-              <div className={cn("text-sm font-semibold tabular-nums", over ? "text-red-600" : "text-emerald-700")}>{eur(dayTotal)}</div>
+              <div className={cn("text-sm font-semibold tabular-nums", over ? "text-red-600" : items.length ? "text-emerald-700" : "text-muted-foreground")}>{eur(dayTotal)}</div>
             </div>
-            <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-              {items.map((e) => <ExpenseRow key={e.id} e={e} compact />)}
-            </div>
-            <div className="mt-1 px-1 text-[11px] text-muted-foreground">
-              Budget {eur(budget)} · {over ? `Sopra di ${eur(dayTotal - budget)}` : `Restano ${eur(budget - dayTotal)}`}
-            </div>
+            {en && parts.length > 0 && (
+              <div className="px-1 mb-1 text-[11px] text-muted-foreground">
+                Diritto: {parts.join(" + ")} · budget {eur(dayBudget)}
+              </div>
+            )}
+            {items.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+                {hasBudget ? `Nessun pasto registrato · disponibile ${eur(dayBudget)}` : "Nessun pasto registrato."}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-card border border-border divide-y divide-border">
+                {items.map((e) => <ExpenseRow key={e.id} e={e} compact onClick={() => onEdit(e)} />)}
+              </div>
+            )}
+            {hasBudget && items.length > 0 && (
+              <div className="mt-1 px-1 text-[11px] text-muted-foreground">
+                {over ? `Sopra di ${eur(dayTotal - dayBudget)}` : `Restano ${eur(dayBudget - dayTotal)}`}
+              </div>
+            )}
           </div>
         );
       })}
@@ -406,32 +430,31 @@ function DayGroup({ date, items, children }: { date: string; items: Expense[]; c
   );
 }
 
-function ExpenseRow({ e, onDelete, compact }: { e: Expense; onDelete?: () => void; compact?: boolean }) {
+function ExpenseRow({ e, onClick, compact }: { e: Expense; onClick?: () => void; compact?: boolean }) {
+  const countable = countsInTotal(e);
   return (
-    <div className="flex items-center gap-3 px-3.5 py-3">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-accent"
+    >
       <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
         {categoryIcon[e.category] ?? "•"}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{e.category}</div>
+        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{e.category}</div>
         {e.note && <div className="text-xs text-muted-foreground truncate">{e.note}</div>}
       </div>
       <div className="text-right shrink-0">
-        <div className="text-sm font-semibold tabular-nums">{eur(e.amount)}</div>
+        <div className={cn("text-sm font-semibold tabular-nums", !countable && "text-muted-foreground line-through decoration-muted-foreground/40")}>{eur(e.amount)}</div>
         <div className="text-[10px] text-muted-foreground">
           {e.paid_by === "employee" ? "dipendente" : "azienda"}
           {e.sync === "pending" && " · sync…"}
           {e.sync === "error" && " · errore"}
         </div>
       </div>
-      {!compact && onDelete && (
-        <button
-          onClick={onDelete}
-          className="text-[10px] text-red-600 px-2 py-1 rounded"
-          aria-label="Elimina"
-        >Elimina</button>
-      )}
-    </div>
+      {!compact && <span className="text-[10px] text-muted-foreground">›</span>}
+    </button>
   );
 }
 
