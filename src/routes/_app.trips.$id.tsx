@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MoreHorizontal, FileText, Settings2 } from "lucide-react";
 import { getTrip, getExpensesForTrip } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
@@ -30,7 +29,6 @@ type Tab = "all" | "meals" | "docs" | "summary";
 function TripDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("all");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pdfSheet, setPdfSheet] = useState(false);
