@@ -7,6 +7,7 @@ import type { Trip, TripStatus } from "@/lib/types";
 import { useMemo } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
+import { countsInTotal } from "@/lib/trip-utils";
 
 export const Route = createFileRoute("/_app/trips")({
   head: () => ({ meta: [{ title: "Trasferte" }, { name: "robots", content: "noindex" }] }),
@@ -30,7 +31,10 @@ function TripsPage() {
 
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const e of expenses) map[e.trip_id] = (map[e.trip_id] ?? 0) + e.amount;
+    for (const e of expenses) {
+      if (!countsInTotal(e)) continue;
+      map[e.trip_id] = (map[e.trip_id] ?? 0) + e.amount;
+    }
     return map;
   }, [expenses]);
 
@@ -153,7 +157,10 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
   onSelect: () => void;
   featured?: boolean;
 }) {
-  const balance = trip.advance != null ? trip.advance - total : null;
+  const effectiveTotal = typeof trip.spent_total === "number" ? trip.spent_total : total;
+  const balance = typeof trip.advance_balance === "number"
+    ? trip.advance_balance
+    : trip.advance != null ? trip.advance - effectiveTotal : null;
   return (
     <Link
       to="/trips/$id"
@@ -187,7 +194,7 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
         </div>
       </div>
       <div className="text-right shrink-0">
-        <div className="text-base font-semibold tabular-nums">{eur(total)}</div>
+        <div className="text-base font-semibold tabular-nums">{eur(effectiveTotal)}</div>
         <div className="text-[10px] text-muted-foreground">totale</div>
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
