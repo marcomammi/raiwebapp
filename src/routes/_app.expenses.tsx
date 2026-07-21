@@ -2,9 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getExpensesForTrip } from "@/lib/api";
 import { eur, formatDayHeader, categoryIcon } from "@/lib/format";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { TripHeader } from "@/components/trip-header";
+import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
+import { countsInTotal, sumCountable } from "@/lib/trip-utils";
+import type { Expense } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/expenses")({
   head: () => ({ meta: [{ title: "Spese" }, { name: "robots", content: "noindex" }] }),
@@ -18,6 +22,7 @@ function ExpensesPage() {
     queryFn: () => (selectedTripId ? getExpensesForTrip(selectedTripId) : Promise.resolve([])),
     enabled: !!selectedTripId,
   });
+  const [editing, setEditing] = useState<Expense | null>(null);
 
   const grouped = useMemo(() => {
     const m = new Map<string, typeof expenses>();
@@ -29,7 +34,7 @@ function ExpensesPage() {
     return Array.from(m.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [expenses]);
 
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const total = sumCountable(expenses);
 
   return (
     <div>
@@ -43,7 +48,7 @@ function ExpensesPage() {
 
       <div className="px-4 mt-3 space-y-4">
         {grouped.map(([date, items]) => {
-          const dayTot = items.reduce((s, e) => s + e.amount, 0);
+          const dayTot = sumCountable(items);
           return (
             <div key={date}>
               <div className="flex items-baseline justify-between px-1 mb-1.5">
@@ -51,20 +56,31 @@ function ExpensesPage() {
                 <div className="text-sm text-muted-foreground tabular-nums">{eur(dayTot)}</div>
               </div>
               <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                {items.map((e) => (
-                  <div key={e.id} className="flex items-center gap-3 px-3.5 py-3">
-                    <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
-                      {categoryIcon[e.category]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{e.category}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {e.note ?? ""}
+                {items.map((e) => {
+                  const countable = countsInTotal(e);
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => setEditing(e)}
+                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-accent"
+                    >
+                      <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
+                        {categoryIcon[e.category]}
                       </div>
-                    </div>
-                    <div className="text-sm font-semibold tabular-nums shrink-0">{eur(e.amount)}</div>
-                  </div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{e.category}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {!countable ? "azienda" : e.note ?? ""}
+                          {countable && e.note ? "" : ""}
+                        </div>
+                      </div>
+                      <div className={cn("text-sm font-semibold tabular-nums shrink-0", !countable && "text-muted-foreground line-through decoration-muted-foreground/40")}>
+                        {eur(e.amount)}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -75,6 +91,9 @@ function ExpensesPage() {
           </div>
         )}
       </div>
+      {editing && (
+        <ExpenseEditSheet expense={editing} trip={selectedTrip} onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }

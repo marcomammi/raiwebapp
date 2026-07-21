@@ -2,11 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getExpensesForTrip } from "@/lib/api";
 import { eur, formatDayHeader, categoryIcon } from "@/lib/format";
-import { MEAL_CATEGORIES } from "@/lib/types";
-import { useMemo } from "react";
+import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { TripHeader } from "@/components/trip-header";
+import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
+import {
+  countsInTotal,
+  entitlementBudget,
+  getEntitlements,
+  sumCountable,
+  totalMealBudget,
+} from "@/lib/trip-utils";
 
 export const Route = createFileRoute("/_app/meals")({
   head: () => ({ meta: [{ title: "Pasti" }, { name: "robots", content: "noindex" }] }),
@@ -20,14 +28,10 @@ function MealsPage() {
     queryFn: () => (selectedTripId ? getExpensesForTrip(selectedTripId) : Promise.resolve([])),
     enabled: !!selectedTripId,
   });
+  const [editing, setEditing] = useState<Expense | null>(null);
   const snapshot = selectedTrip?.meal_rules_snapshot;
-  const budgetFromBackend =
-    snapshot?.daily_budget ??
-    (snapshot && (snapshot.lunch_budget || snapshot.dinner_budget)
-      ? (snapshot.lunch_budget ?? 0) + (snapshot.dinner_budget ?? 0)
-      : undefined);
-  const budget = budgetFromBackend ?? selectedTrip?.meal_budget_daily ?? 0;
-  const budgetAvailable = budget > 0;
+  const entitlements = getEntitlements(selectedTrip);
+  const hasEntitlements = entitlements.length > 0;
   const cityAdjustment =
     selectedTrip?.meal_city_adjustment_applied ??
     snapshot?.city_adjustment_applied ??
@@ -42,23 +46,33 @@ function MealsPage() {
     [expenses],
   );
 
-  const grouped = useMemo(() => {
-    const m = new Map<string, typeof meals>();
+  // Unione date: entitlements dal backend + eventuali giorni con spese.
+  const rows = useMemo(() => {
+    const byDate = new Map<string, Expense[]>();
     for (const e of meals) {
-      const arr = m.get(e.date) ?? [];
+      const arr = byDate.get(e.date) ?? [];
       arr.push(e);
-      m.set(e.date, arr);
+      byDate.set(e.date, arr);
     }
-    return Array.from(m.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [meals]);
+    const dates = new Set<string>();
+    for (const en of entitlements) dates.add(en.date);
+    for (const d of byDate.keys()) dates.add(d);
+    return Array.from(dates)
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((date) => {
+        const items = byDate.get(date) ?? [];
+        const en = entitlements.find((x) => x.date === date);
+        const dayBudget = en ? entitlementBudget(en) : 0;
+        const spent = sumCountable(items);
+        return { date, items, entitlement: en, dayBudget, spent };
+      });
+  }, [meals, entitlements]);
 
-  const totals = useMemo(() => {
-    const total = meals.reduce((s, e) => s + e.amount, 0);
-    const days = grouped.length || 1;
-    const avg = total / days;
-    const diff = budget * days - total;
-    return { total, avg, diff, days };
-  }, [meals, grouped, budget]);
+  const totalBudget = hasEntitlements ? totalMealBudget(selectedTrip) : 0;
+  const totalSpent = sumCountable(meals);
+  const diff = totalBudget - totalSpent;
+  const daysCount = hasEntitlements ? entitlements.length : rows.length;
+  const avg = daysCount > 0 ? totalSpent / daysCount : 0;
 
   return (
     <div>
@@ -68,9 +82,11 @@ function MealsPage() {
           {selectedTrip ? selectedTrip.title : "Nessuna trasferta"}
         </h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {budgetAvailable ? `Budget giornaliero ${eur(budget)}` : "Regole pasti non disponibili"}
+          {hasEntitlements
+            ? `Budget pasti totale ${eur(totalBudget)} · ${entitlements.length} giorni`
+            : "Regole pasti non disponibili"}
         </p>
-        {budgetAvailable && cityAdjustment && (
+        {hasEntitlements && cityAdjustment && (
           <p className="mt-0.5 text-[11px] font-medium text-primary">{cityAdjustmentLabel}</p>
         )}
       </header>
@@ -78,17 +94,17 @@ function MealsPage() {
       <TripHeader label="Trasferta selezionata" />
 
       <div className="px-4 mt-3 grid grid-cols-3 gap-2">
-        <MiniStat label="Totale" value={eur(totals.total)} />
-        <MiniStat label="Media/g" value={eur(totals.avg)} />
+        <MiniStat label="Totale" value={eur(totalSpent)} />
+        <MiniStat label="Media/g" value={eur(avg)} />
         <MiniStat
-          label={totals.diff >= 0 ? "Sotto" : "Sopra"}
-          value={eur(Math.abs(totals.diff))}
-          tone={totals.diff >= 0 ? "positive" : "negative"}
+          label={diff >= 0 ? "Sotto" : "Sopra"}
+          value={eur(Math.abs(diff))}
+          tone={diff >= 0 ? "positive" : "negative"}
         />
       </div>
 
       <div className="px-4 mt-5 space-y-4">
-        {grouped.length === 0 && (
+        {rows.length === 0 && (
           <div className="rounded-2xl bg-card border border-border p-8 text-center">
             <p className="text-sm text-muted-foreground">Nessun pasto registrato.</p>
             <Link to="/new-expense" className="mt-3 inline-flex h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm items-center">
@@ -96,10 +112,13 @@ function MealsPage() {
             </Link>
           </div>
         )}
-        {grouped.map(([date, items]) => {
-          const dayTot = items.reduce((s, e) => s + e.amount, 0);
-          const over = dayTot > budget;
+        {rows.map(({ date, items, entitlement, dayBudget, spent }) => {
+          const hasBudget = dayBudget > 0;
+          const over = hasBudget && spent > dayBudget;
           const state = items.length === 0 ? "neutral" : over ? "over" : "under";
+          const parts: string[] = [];
+          if (entitlement?.lunch_allowed) parts.push(entitlement.lunch_label ?? "Pranzo");
+          if (entitlement?.dinner_allowed) parts.push(entitlement.dinner_label ?? "Cena");
           return (
             <div key={date}>
               <div className="flex items-baseline justify-between px-1 mb-1.5">
@@ -108,33 +127,66 @@ function MealsPage() {
                   "text-sm font-semibold tabular-nums",
                   state === "over" ? "text-red-600" : state === "under" ? "text-emerald-700" : "text-muted-foreground"
                 )}>
-                  {eur(dayTot)}
+                  {eur(spent)}
                 </div>
               </div>
+              {entitlement && parts.length > 0 && (
+                <div className="px-1 mb-1 text-[11px] text-muted-foreground">
+                  Diritto: {parts.join(" + ")} · budget {eur(dayBudget)}
+                </div>
+              )}
+              {entitlement && parts.length === 0 && (
+                <div className="px-1 mb-1 text-[11px] text-muted-foreground">
+                  Nessun diritto pasti per questo giorno.
+                </div>
+              )}
+              {items.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+                  {hasBudget ? `Nessun pasto registrato · budget disponibile ${eur(dayBudget)}` : "Nessun pasto registrato."}
+                </div>
+              ) : (
               <div className={cn(
                 "rounded-2xl border bg-card divide-y divide-border",
                 state === "over" ? "border-red-200" : state === "under" ? "border-emerald-200" : "border-border"
               )}>
-                {items.map((e) => (
-                  <div key={e.id} className="flex items-center gap-3 px-3.5 py-3">
-                    <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
-                      {categoryIcon[e.category]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{e.category}</div>
-                      {e.note && <div className="text-xs text-muted-foreground truncate">{e.note}</div>}
-                    </div>
-                    <div className="text-sm font-semibold tabular-nums">{eur(e.amount)}</div>
-                  </div>
-                ))}
+                  {items.map((e) => {
+                    const countable = countsInTotal(e);
+                    return (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => setEditing(e)}
+                        className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-accent"
+                      >
+                        <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
+                          {categoryIcon[e.category]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={cn("text-sm font-medium", !countable && "text-muted-foreground")}>{e.category}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {!countable ? "azienda" : e.note ?? ""}
+                          </div>
+                        </div>
+                        <div className={cn("text-sm font-semibold tabular-nums", !countable && "text-muted-foreground line-through decoration-muted-foreground/40")}>
+                          {eur(e.amount)}
+                        </div>
+                      </button>
+                    );
+                  })}
               </div>
-              <div className="mt-1 px-1 text-[11px] text-muted-foreground">
-                {over ? `Sopra budget di ${eur(dayTot - budget)}` : `Restano ${eur(budget - dayTot)}`}
-              </div>
+              )}
+              {hasBudget && items.length > 0 && (
+                <div className="mt-1 px-1 text-[11px] text-muted-foreground">
+                  {over ? `Sopra budget di ${eur(spent - dayBudget)}` : `Restano ${eur(dayBudget - spent)}`}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+      {editing && (
+        <ExpenseEditSheet expense={editing} trip={selectedTrip} onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }
