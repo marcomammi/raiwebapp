@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, MoreHorizontal, FileText, Settings2 } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, FileText, Settings2, Pencil } from "lucide-react";
 import { getTrip, getExpensesForTrip } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
@@ -75,6 +75,13 @@ function TripDetail() {
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0" />
+        <button
+          onClick={() => setSettingsSheet(true)}
+          className="h-9 px-3 rounded-full border border-border bg-card text-sm font-medium flex items-center gap-1.5 active:bg-accent"
+          aria-label="Modifica trasferta"
+        >
+          <Pencil className="h-4 w-4" /> Modifica
+        </button>
         <div className="relative">
           <button onClick={() => setMenuOpen((v) => !v)} className="h-9 w-9 grid place-items-center rounded-full active:bg-accent" aria-label="Menu">
             <MoreHorizontal className="h-5 w-5" />

@@ -179,12 +179,13 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="truncate text-base font-semibold">{trip.title}</h3>
+          <h3 className={cn("truncate font-semibold", featured ? "text-xl" : "text-lg")}>{trip.title}</h3>
           {trip.has_pdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="PDF disponibile" />}
           {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" aria-label="Selezionata" />}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground truncate">
           {formatDate(trip.start_date)} – {formatDate(trip.end_date)}
+          {(trip.city ?? trip.destination) ? ` · ${trip.city ?? trip.destination}` : ""}
         </p>
         <div className="mt-1.5 flex items-center gap-2">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLOR[trip.status]}`}>
