@@ -36,9 +36,15 @@ function TripDetail() {
     const meals = expenses.filter((e) => MEAL_CATEGORIES.includes(e.category));
     const mealTotal = meals.reduce((s, e) => s + e.amount, 0);
     const days = new Set(meals.map((e) => e.date)).size || 1;
-    const budgetTotal = (trip?.meal_budget_daily ?? 0) * days;
+    const snap = trip?.meal_rules_snapshot;
+    const dailyBudget =
+      snap?.daily_budget ??
+      (snap && (snap.lunch_budget || snap.dinner_budget)
+        ? (snap.lunch_budget ?? 0) + (snap.dinner_budget ?? 0)
+        : trip?.meal_budget_daily ?? 0);
+    const budgetTotal = dailyBudget * days;
     const diff = budgetTotal - mealTotal;
-    return { total, mealTotal, budgetTotal, diff, days };
+    return { total, mealTotal, budgetTotal, diff, days, dailyBudget };
   }, [expenses, trip]);
 
   const hasKmData = useMemo(

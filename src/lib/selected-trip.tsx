@@ -9,13 +9,15 @@ interface Ctx {
   selectedTrip: Trip | null;
   trips: Trip[];
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }
 
 const SelectedTripCtx = createContext<Ctx | null>(null);
 const LS_KEY = "app.selectedTripId";
 
 export function SelectedTripProvider({ children }: { children: ReactNode }) {
-  const { data: trips = [], isLoading } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
+  const { data: trips = [], isLoading, isError, refetch } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
   const [selectedTripId, setSelectedTripIdState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(LS_KEY);
@@ -45,8 +47,8 @@ export function SelectedTripProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ selectedTripId, setSelectedTripId, selectedTrip, trips, isLoading }),
-    [selectedTripId, setSelectedTripId, selectedTrip, trips, isLoading],
+    () => ({ selectedTripId, setSelectedTripId, selectedTrip, trips, isLoading, isError, refetch: () => { void refetch(); } }),
+    [selectedTripId, setSelectedTripId, selectedTrip, trips, isLoading, isError, refetch],
   );
 
   return <SelectedTripCtx.Provider value={value}>{children}</SelectedTripCtx.Provider>;
