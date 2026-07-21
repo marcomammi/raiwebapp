@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { requestAccess } from "@/lib/api";
+import { requestAccess, ApiError } from "@/lib/api";
 import { ALLOWED_EMAIL_DOMAIN, isAllowedEmail } from "@/lib/config";
 import { toast } from "sonner";
 
@@ -34,7 +34,17 @@ function LoginPage() {
       await signIn(email.trim(), password);
       navigate({ to: "/trips", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore di accesso");
+      if (err instanceof ApiError) {
+        if (err.code === "network" || err.status === 0) {
+          toast.error("Servizio non raggiungibile. Controlla la connessione o riprova.");
+        } else if (err.status === 401 || err.status === 403) {
+          toast.error("Credenziali non valide.");
+        } else {
+          toast.error(err.message || "Errore del server. Riprova più tardi.");
+        }
+      } else {
+        toast.error(err instanceof Error ? err.message : "Errore di accesso");
+      }
     } finally {
       setLoading(false);
     }
