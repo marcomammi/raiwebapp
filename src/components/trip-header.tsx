@@ -9,7 +9,7 @@ import { TripEditSheet } from "@/components/trip-edit-sheet";
  * Small header shown on the Spese/Pasti tabs that names the currently
  * selected trip and lets the user switch quickly to another one.
  */
-export function TripHeader({ label }: { label: string }) {
+export function TripHeader({ label, showEditButton = false }: { label: string; showEditButton?: boolean }) {
   const { selectedTrip, trips, setSelectedTripId } = useSelectedTrip();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -40,7 +40,7 @@ export function TripHeader({ label }: { label: string }) {
         </div>
         <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition", open && "rotate-180")} />
       </button>
-      {selectedTrip && (
+      {selectedTrip && showEditButton && (
         <button
           type="button"
           data-testid="edit-selected-trip"
