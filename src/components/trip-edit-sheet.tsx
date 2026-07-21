@@ -119,7 +119,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
             <Field label="Data inizio">
               <input
                 type="date"
@@ -138,7 +138,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
             <Field label="Ora inizio">
               <input
                 type="time"
