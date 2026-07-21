@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { z } from "zod";
 import { createExpense, getTrips } from "@/lib/api";
 import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
+import { isMealAllowed } from "@/lib/trip-utils";
 import { categoryIcon, todayISO } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,9 +54,17 @@ function NewExpensePage() {
     : "";
   const displayedAmount = isMeal && forfait && forfaitAvailable ? forfaitAmountStr : amount;
   const amountLocked = isMeal && forfait;
+  const mealCheck = isMeal && mealType ? isMealAllowed(selectedTrip, date, mealType) : null;
+  const mealBlocked = mealCheck ? !mealCheck.allowed && mealCheck.hasRules : false;
+  const mealMessage = mealBlocked
+    ? mealCheck?.entitlement
+      ? `${category} non consentito in questa data secondo le regole della trasferta.`
+      : "Nessun diritto pasti configurato per questa data."
+    : null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mealBlocked) return toast.error(mealMessage!);
     const effective = isMeal && forfait
       ? (forfaitAvailable ? String(forfaitAmount) : "")
       : amount;
@@ -106,7 +115,7 @@ function NewExpensePage() {
         <button
           form="expense-form"
           type="submit"
-          disabled={saving}
+          disabled={saving || mealBlocked}
           className="text-sm font-semibold text-primary disabled:opacity-50 h-9 px-2"
         >
           {saving ? "…" : "Salva"}
@@ -114,6 +123,11 @@ function NewExpensePage() {
       </header>
 
       <form id="expense-form" onSubmit={submit} className="px-4 py-4 space-y-5 max-w-md mx-auto">
+        {mealBlocked && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs">
+            {mealMessage}
+          </div>
+        )}
         <div>
           <div className="text-center py-4">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Importo</div>
