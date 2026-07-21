@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { createCurrentTripExpense, createExpense, getStoredAuth } from "@/lib/api";
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type PaidBy } from "@/lib/types";
-import { formatAmount } from "@/lib/format";
+import { eur } from "@/lib/format";
 
 const searchSchema = z.object({
   amount: z.string().optional(),
@@ -208,7 +208,7 @@ function ShortcutExpensePage() {
             <div className="text-4xl mb-2">✅</div>
             <h1 className="text-lg font-semibold">Spesa aggiunta</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {state.category} · € {formatAmount(state.amount)}
+              {state.category} · {eur(state.amount)}
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <Link
