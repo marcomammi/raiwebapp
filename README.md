@@ -49,11 +49,17 @@ In `src/lib/config.ts`:
 
 - `API_BASE_URL` — base URL del backend (default `https://rai.marcomammi.com/api`,
   sovrascrivibile con `VITE_API_BASE_URL`).
-- `ALLOWED_EMAIL_DOMAIN` — dominio email ammesso per login, creazione utenti
-  admin e richieste di accesso.
+- `ALLOWED_EMAIL_DOMAIN = "rai.it"` — dominio email ammesso per login,
+  creazione utenti admin e richieste di accesso. Solo indirizzi `@rai.it`
+  possono autenticarsi o richiedere accesso.
 - `SELF_REGISTRATION_ENABLED = false` — non c'è registrazione autonoma; la
   login espone "Richiedi accesso" (`POST /api/access-requests`).
-- `DEV_MOCK_TRIPS` — fallback dev-only per trasferte/spese quando il backend
-  non è raggiungibile in preview. Non tocca mai l'autenticazione.
+- `DEV_MOCK_TRIPS` — fallback dev-only per trasferte/spese/PDF. Disattivato
+  di default: abilitalo esplicitamente in sviluppo con
+  `VITE_DEV_MOCK_TRIPS=true`. In preview/produzione l'app usa solo le API
+  reali; se non rispondono viene mostrato uno stato vuoto o un errore
+  pulito, senza inventare dati. Non tocca mai l'autenticazione.
 
-Nessun account demo, nessuna password è hard-coded nel codice.
+Il backend `https://rai.marcomammi.com/api` è la fonte unica per utenti,
+trasferte, spese, budget e PDF. Nessun account demo, nessuna password è
+hard-coded nel codice.
