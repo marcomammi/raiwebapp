@@ -84,6 +84,8 @@ function NewTripPage() {
         if (dest && !destination) setDestination(dest);
         if (tf.start_date && startDate === todayISO()) setStartDate(tf.start_date);
         if (tf.end_date && endDate === todayISO()) setEndDate(tf.end_date);
+        if (tf.start_time && !startTime) setStartTime(tf.start_time);
+        if (tf.end_time && !endTime) setEndTime(tf.end_time);
         if (tf.notes && !notes) setNotes(tf.notes);
       }
       // Aggiungi tratte
