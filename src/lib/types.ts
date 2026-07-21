@@ -96,6 +96,48 @@ export interface TrainSegment {
   paid_by: PaidBy;
   note?: string;
   attachment_url?: string;
+  document_ref?: string;
+}
+
+export type TravelDocumentRole = "travel_sheet" | "train_ticket" | "other";
+
+export type TravelDocumentParseStatus = "idle" | "parsing" | "parsed" | "error";
+
+export interface TravelDocument {
+  id: string;
+  file: File;
+  filename: string;
+  role: TravelDocumentRole;
+  status: TravelDocumentParseStatus;
+  error?: string;
+  remote_id?: string;
+}
+
+export interface ParsedTripFields {
+  travel_sheet_number?: string;
+  advance_amount?: number;
+  destination?: string;
+  city?: string;
+  start_date?: string;
+  end_date?: string;
+  notes?: string;
+}
+
+export interface ParsedDocumentInfo {
+  index?: number;
+  filename?: string;
+  role?: TravelDocumentRole;
+  remote_id?: string;
+  status?: TravelDocumentParseStatus;
+  error?: string;
+}
+
+export interface ParsedTravelDocumentsResult {
+  trip_fields?: ParsedTripFields;
+  train_segments?: TrainSegment[];
+  expenses?: Array<Record<string, unknown>>;
+  documents?: ParsedDocumentInfo[];
+  raw?: unknown;
 }
 
 export interface UserProfile {
