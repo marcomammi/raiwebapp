@@ -31,9 +31,17 @@ function MealsPage() {
   const snapshot = selectedTrip?.meal_rules_snapshot;
   const entitlements = getEntitlements(selectedTrip);
   const hasEntitlements = entitlements.length > 0;
-  const today = new Date().toISOString().slice(0, 10);
+  // Data odierna in fuso locale (evita off-by-one con UTC in serata)
+  const today = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
+  const dayKey = (v: string) => (v ?? "").slice(0, 10);
   const elapsedEntitlements = useMemo(
-    () => entitlements.filter((e) => e.date <= today),
+    () => entitlements.filter((e) => dayKey(e.date) <= today),
     [entitlements, today],
   );
   const cityAdjustment =
@@ -79,7 +87,7 @@ function MealsPage() {
   const diff = totalBudget - totalSpent;
   const daysCount = hasEntitlements
     ? elapsedEntitlements.length
-    : rows.filter((r) => r.date <= today).length;
+    : rows.filter((r) => dayKey(r.date) <= today).length;
   const avg = daysCount > 0 ? totalSpent / daysCount : 0;
 
   return (
