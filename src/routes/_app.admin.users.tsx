@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { ALLOWED_EMAIL_DOMAIN, isAllowedEmail } from "@/lib/config";
 import type { AppUser, UserRole, UserStatus } from "@/lib/types";
+import type { MealProfile } from "@/lib/types";
 import { toast } from "sonner";
 import { ChevronLeft, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -167,6 +168,7 @@ function UserFormModal({
   const [employeeNumber, setEmployeeNumber] = useState(initial?.employeeNumber ?? "");
   const [role, setRole] = useState<UserRole>(initial?.role ?? "user");
   const [status, setStatus] = useState<UserStatus>(initial?.status ?? "active");
+  const [mealProfile, setMealProfile] = useState<MealProfile>(initial?.mealProfile ?? "standard");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -182,6 +184,7 @@ function UserFormModal({
       employeeNumber: employeeNumber.trim(),
       role,
       status,
+      mealProfile,
     };
     setSaving(true);
     try {
@@ -245,6 +248,24 @@ function UserFormModal({
               </select>
             </Field>
           </div>
+
+          <Field label="Profilo pasti">
+            <div className="grid grid-cols-2 rounded-xl bg-muted p-1 h-11 text-xs">
+              {(["standard", "enhanced"] as MealProfile[]).map((p) => (
+                <button
+                  type="button"
+                  key={p}
+                  onClick={() => setMealProfile(p)}
+                  className={
+                    "rounded-lg font-medium " +
+                    (mealProfile === p ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")
+                  }
+                >
+                  {p === "standard" ? "Standard" : "Maggiorato"}
+                </button>
+              ))}
+            </div>
+          </Field>
 
           <button type="submit" disabled={saving} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-60 mt-2">
             {saving ? "Salvataggio…" : initial ? "Salva modifiche" : "Crea utente"}
