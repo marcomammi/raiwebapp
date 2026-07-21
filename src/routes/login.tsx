@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { requestAccess } from "@/lib/api";
+import { ALLOWED_EMAIL_DOMAIN, isAllowedEmail } from "@/lib/config";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Accedi — Trasferte" },
+      { title: "Accedi — Trip Companion" },
       { name: "description", content: "Accedi per gestire le tue trasferte e spese." },
       { name: "robots", content: "noindex" },
     ],
@@ -20,6 +22,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showRequest, setShowRequest] = useState(false);
 
   useEffect(() => {
     if (ready && user) navigate({ to: "/trips", replace: true });
@@ -38,6 +41,24 @@ function LoginPage() {
     }
   };
 
+  const handleRequestAccess = async () => {
+    const em = email.trim();
+    if (!em) {
+      toast.error("Inserisci l'email aziendale prima di richiedere l'accesso.");
+      return;
+    }
+    if (!isAllowedEmail(em)) {
+      toast.error(`Usa un indirizzo @${ALLOWED_EMAIL_DOMAIN}.`);
+      return;
+    }
+    try {
+      await requestAccess({ email: em });
+      toast.success("Richiesta inviata.");
+    } catch (err) {
+      toast.message(err instanceof Error ? err.message : "Richiesta non disponibile.");
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col">
       <div className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md mx-auto w-full">
@@ -45,7 +66,7 @@ function LoginPage() {
           <div className="mx-auto mb-5 h-16 w-16 rounded-3xl bg-primary text-primary-foreground grid place-items-center text-2xl font-semibold shadow-lg">
             T
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Trasferte</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Trip Companion</h1>
           <p className="mt-1 text-sm text-muted-foreground">Accedi per continuare</p>
         </div>
 
@@ -60,7 +81,7 @@ function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-12 rounded-xl border border-input bg-card px-4 text-base focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="nome@azienda.it"
+              placeholder={`nome@${ALLOWED_EMAIL_DOMAIN}`}
             />
           </div>
           <div className="space-y-1.5">
@@ -84,9 +105,32 @@ function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Le credenziali sono verificate sul server centrale.
-        </p>
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={handleRequestAccess}
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            Richiedi accesso
+          </button>
+        </div>
+
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setShowRequest((v) => !v)}
+            className="w-full text-xs text-muted-foreground underline-offset-4 hover:underline"
+          >
+            {showRequest ? "Nascondi credenziali demo" : "Mostra credenziali demo (preview)"}
+          </button>
+          {showRequest && (
+            <div className="mt-3 rounded-xl border border-dashed border-border bg-muted/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="font-medium text-foreground">Solo preview — da rimuovere in produzione.</p>
+              <p className="mt-1">Utente: <code>user@{ALLOWED_EMAIL_DOMAIN}</code> · <code>Demo.User.2026!</code></p>
+              <p>Admin: <code>admin@{ALLOWED_EMAIL_DOMAIN}</code> · <code>Demo.Admin.2026!</code></p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
