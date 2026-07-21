@@ -325,30 +325,50 @@ export async function requestAccess(payload: AccessRequestPayload): Promise<{ qu
 
 // ---------- trips ----------
 export async function getTrips(): Promise<Trip[]> {
-  ensureSeed();
-  await delay(150);
-  const trips = read<Trip[]>(LS_TRIPS, []);
-  return [...trips].sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(150);
+    const trips = read<Trip[]>(LS_TRIPS, []);
+    return [...trips].sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
+  }
+  const raw = await apiFetch<Trip[]>("/trips");
+  return [...raw].sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
 }
 
 export async function getTrip(id: string): Promise<Trip | null> {
-  ensureSeed();
-  await delay(120);
-  return read<Trip[]>(LS_TRIPS, []).find((t) => t.id === id) ?? null;
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(120);
+    return read<Trip[]>(LS_TRIPS, []).find((t) => t.id === id) ?? null;
+  }
+  try {
+    return await apiFetch<Trip>(`/trips/${encodeURIComponent(id)}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 export async function getExpensesForTrip(tripId: string): Promise<Expense[]> {
-  ensureSeed();
-  await delay(100);
-  return read<Expense[]>(LS_EXPENSES, [])
-    .filter((e) => e.trip_id === tripId)
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(100);
+    return read<Expense[]>(LS_EXPENSES, [])
+      .filter((e) => e.trip_id === tripId)
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+  const raw = await apiFetch<Expense[]>(`/trips/${encodeURIComponent(tripId)}/expenses`);
+  return [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 export async function getAllExpenses(): Promise<Expense[]> {
-  ensureSeed();
-  await delay(120);
-  return read<Expense[]>(LS_EXPENSES, []).sort((a, b) => (a.date < b.date ? 1 : -1));
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(120);
+    return read<Expense[]>(LS_EXPENSES, []).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+  const raw = await apiFetch<Expense[]>(`/expenses`);
+  return [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 // ---------- expenses ----------
@@ -363,33 +383,49 @@ export interface ExpensePayload {
 }
 
 export async function createExpense(tripId: string, payload: ExpensePayload): Promise<Expense> {
-  await delay(180);
-  const list = read<Expense[]>(LS_EXPENSES, []);
-  const newExp: Expense = {
-    id: uid(),
-    trip_id: tripId,
-    sync: "synced",
-    source: payload.source ?? "app",
-    ...payload,
-  };
-  write(LS_EXPENSES, [newExp, ...list]);
-  return newExp;
+  if (DEV_MOCK_TRIPS) {
+    await delay(180);
+    const list = read<Expense[]>(LS_EXPENSES, []);
+    const newExp: Expense = {
+      id: uid(),
+      trip_id: tripId,
+      sync: "synced",
+      source: payload.source ?? "app",
+      ...payload,
+    };
+    write(LS_EXPENSES, [newExp, ...list]);
+    return newExp;
+  }
+  return apiFetch<Expense>(`/trips/${encodeURIComponent(tripId)}/expenses`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function updateExpense(expenseId: string, payload: Partial<ExpensePayload>): Promise<Expense> {
-  await delay(150);
-  const list = read<Expense[]>(LS_EXPENSES, []);
-  const idx = list.findIndex((e) => e.id === expenseId);
-  if (idx < 0) throw new Error("Spesa non trovata");
-  list[idx] = { ...list[idx], ...payload };
-  write(LS_EXPENSES, list);
-  return list[idx];
+  if (DEV_MOCK_TRIPS) {
+    await delay(150);
+    const list = read<Expense[]>(LS_EXPENSES, []);
+    const idx = list.findIndex((e) => e.id === expenseId);
+    if (idx < 0) throw new Error("Spesa non trovata");
+    list[idx] = { ...list[idx], ...payload };
+    write(LS_EXPENSES, list);
+    return list[idx];
+  }
+  return apiFetch<Expense>(`/expenses/${encodeURIComponent(expenseId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function deleteExpense(expenseId: string): Promise<void> {
-  await delay(120);
-  const list = read<Expense[]>(LS_EXPENSES, []).filter((e) => e.id !== expenseId);
-  write(LS_EXPENSES, list);
+  if (DEV_MOCK_TRIPS) {
+    await delay(120);
+    const list = read<Expense[]>(LS_EXPENSES, []).filter((e) => e.id !== expenseId);
+    write(LS_EXPENSES, list);
+    return;
+  }
+  await apiFetch<void>(`/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE" });
 }
 
 // ---------- meal budget ----------
@@ -399,13 +435,20 @@ export async function getMealBudget(tripId: string): Promise<number> {
 }
 
 export async function updateMealBudget(tripId: string, budget: number): Promise<number> {
-  await delay(120);
-  const trips = read<Trip[]>(LS_TRIPS, []);
-  const idx = trips.findIndex((t) => t.id === tripId);
-  if (idx < 0) throw new Error("Trasferta non trovata");
-  trips[idx] = { ...trips[idx], meal_budget_daily: budget };
-  write(LS_TRIPS, trips);
-  return budget;
+  if (DEV_MOCK_TRIPS) {
+    await delay(120);
+    const trips = read<Trip[]>(LS_TRIPS, []);
+    const idx = trips.findIndex((t) => t.id === tripId);
+    if (idx < 0) throw new Error("Trasferta non trovata");
+    trips[idx] = { ...trips[idx], meal_budget_daily: budget };
+    write(LS_TRIPS, trips);
+    return budget;
+  }
+  const res = await apiFetch<{ meal_budget_daily: number }>(
+    `/trips/${encodeURIComponent(tripId)}/meal-budget`,
+    { method: "PATCH", body: JSON.stringify({ meal_budget_daily: budget }) },
+  );
+  return res.meal_budget_daily ?? budget;
 }
 
 // ---------- pdf ----------
