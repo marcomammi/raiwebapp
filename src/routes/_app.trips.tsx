@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FileText, Circle, CheckCircle2, Plus } from "lucide-react";
+import { ChevronRight, FileText, Circle, CheckCircle2, Plus, Settings2 } from "lucide-react";
 import { getAllExpenses } from "@/lib/api";
 import { eur, formatDate } from "@/lib/format";
 import type { Trip, TripStatus } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 import { countsInTotal } from "@/lib/trip-utils";
+import { TripEditSheet } from "@/components/trip-edit-sheet";
 
 export const Route = createFileRoute("/_app/trips")({
   head: () => ({ meta: [{ title: "Trasferte" }, { name: "robots", content: "noindex" }] }),
@@ -29,6 +30,7 @@ function TripsPage() {
   const { trips, isLoading, selectedTripId, setSelectedTripId, refetch, isError } = useSelectedTrip();
   const navigate = useNavigate();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   const openTrip = (id: string) => {
     setSelectedTripId(id);
@@ -95,6 +97,7 @@ function TripsPage() {
                 total={totals[inProgress.id] ?? 0}
                 selected={inProgress.id === selectedTripId}
                 onSelect={() => openTrip(inProgress.id)}
+                onEdit={() => setEditingTrip(inProgress)}
                 featured
               />
             ) : (
@@ -109,6 +112,7 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
+            onEdit={(t) => setEditingTrip(t)}
             empty="Nessuna trasferta conclusa."
           />
           <Section
@@ -117,20 +121,25 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
+            onEdit={(t) => setEditingTrip(t)}
             empty="Nessuna bozza."
           />
         </div>
+      )}
+      {editingTrip && (
+        <TripEditSheet trip={editingTrip} onClose={() => setEditingTrip(null)} />
       )}
     </div>
   );
 }
 
-function Section({ title, trips, totals, selectedId, onSelect, empty }: {
+function Section({ title, trips, totals, selectedId, onSelect, onEdit, empty }: {
   title: string;
   trips: Trip[];
   totals: Record<string, number>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onEdit: (t: Trip) => void;
   empty: string;
 }) {
   return (
@@ -147,6 +156,7 @@ function Section({ title, trips, totals, selectedId, onSelect, empty }: {
                 total={totals[t.id] ?? 0}
                 selected={t.id === selectedId}
                 onSelect={() => onSelect(t.id)}
+                onEdit={() => onEdit(t)}
               />
             </li>
           ))}
@@ -156,11 +166,12 @@ function Section({ title, trips, totals, selectedId, onSelect, empty }: {
   );
 }
 
-function TripCard({ trip, total, selected, onSelect, featured }: {
+function TripCard({ trip, total, selected, onSelect, onEdit, featured }: {
   trip: Trip;
   total: number;
   selected: boolean;
   onSelect: () => void;
+  onEdit: () => void;
   featured?: boolean;
 }) {
   const effectiveTotal = typeof trip.spent_total === "number" ? trip.spent_total : total;
@@ -168,16 +179,18 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
     ? trip.advance_balance
     : trip.advance != null ? trip.advance - effectiveTotal : null;
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={cn(
-        "w-full text-left flex items-center gap-3 rounded-2xl border px-4 py-3.5 active:bg-accent transition",
+        "w-full flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition",
         featured ? "bg-primary/5 border-primary/30" : "bg-card border-border",
         selected && !featured && "ring-2 ring-primary/40",
       )}
     >
-      <div className="flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex-1 min-w-0 text-left active:opacity-80"
+      >
         <div className="flex items-center gap-2">
           <h3 className={cn("truncate font-semibold", featured ? "text-xl" : "text-lg")}>{trip.title}</h3>
           {trip.has_pdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="PDF disponibile" />}
@@ -198,12 +211,21 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
             </span>
           )}
         </div>
-      </div>
+      </button>
       <div className="text-right shrink-0">
         <div className="text-base font-semibold tabular-nums">{eur(effectiveTotal)}</div>
         <div className="text-[10px] text-muted-foreground">totale</div>
       </div>
+      <button
+        type="button"
+        data-testid="edit-trip-from-list"
+        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        className="shrink-0 h-9 w-9 grid place-items-center rounded-full bg-primary text-primary-foreground active:opacity-90"
+        aria-label="Modifica trasferta"
+      >
+        <Settings2 className="h-4 w-4" />
+      </button>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-    </button>
+    </div>
   );
 }
