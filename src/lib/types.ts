@@ -60,8 +60,30 @@ export interface Trip {
 
 export interface UserProfile {
   id: string;
-  name: string;
   email: string;
-  matricola: string;
+  firstName: string;
+  lastName: string;
+  employeeNumber: string;
+  role: UserRole;
+  status: UserStatus;
   default_meal_budget: number;
+  createdAt: string;
+  /** Derived: `${firstName} ${lastName}`. */
+  name: string;
+  /** Alias of employeeNumber for legacy UI. */
+  matricola: string;
+}
+
+export type UserRole = "user" | "admin";
+export type UserStatus = "active" | "disabled";
+
+export interface AppUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  employeeNumber: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
 }
