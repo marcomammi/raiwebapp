@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, MoreHorizontal, FileText } from "lucide-react";
-import { getTrip, getExpensesForTrip, updateMealBudget } from "@/lib/api";
+import { ChevronLeft, MoreHorizontal, FileText, Settings2 } from "lucide-react";
+import { getTrip, getExpensesForTrip } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
 import { PdfSheet } from "@/components/pdf-sheet";
+import { TripEditSheet } from "@/components/trip-edit-sheet";
 import {
   countsInTotal,
   entitlementBudget,
@@ -33,6 +34,7 @@ function TripDetail() {
   const [tab, setTab] = useState<Tab>("all");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pdfSheet, setPdfSheet] = useState(false);
+  const [settingsSheet, setSettingsSheet] = useState(false);
   const { setSelectedTripId } = useSelectedTrip();
 
   useEffect(() => { setSelectedTripId(id); }, [id, setSelectedTripId]);
@@ -88,9 +90,11 @@ function TripDetail() {
                 <FileText className="h-4 w-4" /> Genera PDF
               </button>
               <button
-                onClick={() => { setMenuOpen(false); handleUpdateBudget(id, trip.meal_budget_daily, qc); }}
-                className="w-full px-4 py-3 text-left hover:bg-accent"
-              >Modifica budget pasti</button>
+                onClick={() => { setMenuOpen(false); setSettingsSheet(true); }}
+                className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-accent"
+              >
+                <Settings2 className="h-4 w-4" /> Modifica impostazioni
+              </button>
             </div>
           )}
         </div>
@@ -159,18 +163,11 @@ function TripDetail() {
       {editing && (
         <ExpenseEditSheet expense={editing} trip={trip} onClose={() => setEditing(null)} />
       )}
+      {settingsSheet && (
+        <TripEditSheet trip={trip} onClose={() => setSettingsSheet(false)} />
+      )}
     </div>
   );
-}
-
-async function handleUpdateBudget(id: string, current: number, qc: ReturnType<typeof useQueryClient>) {
-  const v = prompt("Budget giornaliero pasti (EUR)", String(current));
-  if (!v) return;
-  const n = Number(v.replace(",", "."));
-  if (!Number.isFinite(n) || n < 0) return toast.error("Valore non valido");
-  await updateMealBudget(id, n);
-  qc.invalidateQueries({ queryKey: ["trip", id] });
-  toast.success("Budget aggiornato");
 }
 
 function StatCard({ label, value, tone, accent }: { label: string; value: string; tone?: "positive" | "negative"; accent?: boolean }) {
