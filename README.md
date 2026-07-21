@@ -28,28 +28,32 @@ npm run dev
 - React
 - Tailwind CSS
 
-## Companion app — stato preview
+## Companion app
 
-Questa preview è pensata come **companion app** del motore aziendale (backend
-su `rai.marcomammi.com`). In questa fase tutte le chiamate sono **mock locali**
-centralizzate in `src/lib/api.ts`: le firme e i percorsi sono già allineati agli
-endpoint reali (`/api/login`, `/api/me`, `/api/admin/users`, …). Il passo
-successivo è sostituire i mock con chiamate HTTP reali, così trasferte e spese
-inserite dall'app saranno visibili anche dal sito. Il backend resta la fonte
-unica di utenti, trasferte, spese, regole di calcolo e PDF.
+Questa app è una **companion app mobile** del motore aziendale. Il backend su
+`rai.marcomammi.com` resta la fonte unica per utenti, trasferte, spese, regole
+di calcolo e PDF: l'app non duplica dati, li consuma via API.
 
-### Account demo (solo preview, da rimuovere in produzione)
+### Endpoint reali usati
 
-- Utente: `user@company.test` — password `Demo.User.2026!`
-- Admin:  `admin@company.test` — password `Demo.Admin.2026!`
+- `POST /api/login`, `POST /api/logout`, `GET /api/me`
+- `GET/POST/PATCH/DELETE /api/admin/users`
+- `POST /api/access-requests`
+- `GET /api/trips`, `GET /api/trips/:id`
+- `POST /api/trips/:id/expenses`, `PATCH /api/expenses/:id`, `DELETE /api/expenses/:id`
+- `POST /api/trips/:id/generate-pdf`, `POST /api/trips/:id/email-pdf`
 
 ### Configurazione
 
-- `ALLOWED_EMAIL_DOMAIN` in `src/lib/config.ts` limita le email accettate
-  (login, creazione utenti admin, futura registrazione). Default preview:
-  `company.test`.
-- La **registrazione autonoma è disattivata** (`SELF_REGISTRATION_ENABLED`
-  false). La login espone un'azione "Richiedi accesso" che informa l'utente di
-  contattare un amministratore.
-- Nessun brand aziendale è esposto prima del login; nome pubblico neutro
-  ("Trip Companion" / "Trasferte").
+In `src/lib/config.ts`:
+
+- `API_BASE_URL` — base URL del backend (default `https://rai.marcomammi.com/api`,
+  sovrascrivibile con `VITE_API_BASE_URL`).
+- `ALLOWED_EMAIL_DOMAIN` — dominio email ammesso per login, creazione utenti
+  admin e richieste di accesso.
+- `SELF_REGISTRATION_ENABLED = false` — non c'è registrazione autonoma; la
+  login espone "Richiedi accesso" (`POST /api/access-requests`).
+- `DEV_MOCK_TRIPS` — fallback dev-only per trasferte/spese quando il backend
+  non è raggiungibile in preview. Non tocca mai l'autenticazione.
+
+Nessun account demo, nessuna password è hard-coded nel codice.

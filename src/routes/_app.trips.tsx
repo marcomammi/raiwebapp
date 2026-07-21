@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FileText, Circle } from "lucide-react";
-import { getTrips, getAllExpenses } from "@/lib/api";
+import { ChevronRight, FileText, Circle, CheckCircle2 } from "lucide-react";
+import { getAllExpenses } from "@/lib/api";
 import { eur, formatDate } from "@/lib/format";
 import type { Trip, TripStatus } from "@/lib/types";
 import { useMemo } from "react";
+import { useSelectedTrip } from "@/lib/selected-trip";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/trips")({
   head: () => ({ meta: [{ title: "Trasferte" }, { name: "robots", content: "noindex" }] }),
@@ -23,7 +25,7 @@ const STATUS_COLOR: Record<TripStatus, string> = {
 };
 
 function TripsPage() {
-  const { data: trips = [], isLoading } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
+  const { trips, isLoading, selectedTripId, setSelectedTripId } = useSelectedTrip();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
 
   const totals = useMemo(() => {
@@ -32,7 +34,8 @@ function TripsPage() {
     return map;
   }, [expenses]);
 
-  const active = trips.filter((t) => t.status !== "closed");
+  const inProgress = trips.find((t) => t.status === "in_progress") ?? null;
+  const drafts = trips.filter((t) => t.status === "draft");
   const closed = trips.filter((t) => t.status === "closed");
 
   return (
@@ -46,18 +49,50 @@ function TripsPage() {
         <div className="px-5 py-10 text-sm text-muted-foreground">Caricamento…</div>
       ) : (
         <div className="px-4 space-y-6">
-          <Section title="In lavorazione" trips={active} totals={totals} empty="Nessuna trasferta attiva." />
-          <Section title="Concluse" trips={closed} totals={totals} empty="Nessuna trasferta conclusa." />
+          <section>
+            <h2 className="px-1 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">In corso</h2>
+            {inProgress ? (
+              <TripCard
+                trip={inProgress}
+                total={totals[inProgress.id] ?? 0}
+                selected={inProgress.id === selectedTripId}
+                onSelect={() => setSelectedTripId(inProgress.id)}
+                featured
+              />
+            ) : (
+              <div className="rounded-2xl bg-card border border-border px-4 py-6 text-sm text-muted-foreground text-center">
+                Nessuna trasferta in corso.
+              </div>
+            )}
+          </section>
+          <Section
+            title="Trasferte passate"
+            trips={closed}
+            totals={totals}
+            selectedId={selectedTripId}
+            onSelect={setSelectedTripId}
+            empty="Nessuna trasferta conclusa."
+          />
+          <Section
+            title="Bozze"
+            trips={drafts}
+            totals={totals}
+            selectedId={selectedTripId}
+            onSelect={setSelectedTripId}
+            empty="Nessuna bozza."
+          />
         </div>
       )}
     </div>
   );
 }
 
-function Section({ title, trips, totals, empty }: {
+function Section({ title, trips, totals, selectedId, onSelect, empty }: {
   title: string;
   trips: Trip[];
   totals: Record<string, number>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   empty: string;
 }) {
   return (
@@ -67,47 +102,67 @@ function Section({ title, trips, totals, empty }: {
         <div className="rounded-2xl bg-card border border-border px-4 py-6 text-sm text-muted-foreground text-center">{empty}</div>
       ) : (
         <ul className="space-y-2">
-          {trips.map((t) => {
-            const total = totals[t.id] ?? 0;
-            const balance = t.advance != null ? t.advance - total : null;
-            return (
-              <li key={t.id}>
-                <Link
-                  to="/trips/$id"
-                  params={{ id: t.id }}
-                  className="flex items-center gap-3 rounded-2xl bg-card border border-border px-4 py-3.5 active:bg-accent transition"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="truncate text-base font-semibold">{t.title}</h3>
-                      {t.has_pdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="PDF disponibile" />}
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                      {formatDate(t.start_date)} – {formatDate(t.end_date)}
-                    </p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLOR[t.status]}`}>
-                        <Circle className="h-1.5 w-1.5 fill-current stroke-none" />
-                        {STATUS_LABEL[t.status]}
-                      </span>
-                      {balance != null && (
-                        <span className={`text-[10px] font-medium ${balance >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                          Saldo {eur(balance)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-base font-semibold tabular-nums">{eur(total)}</div>
-                    <div className="text-[10px] text-muted-foreground">totale</div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </Link>
-              </li>
-            );
-          })}
+          {trips.map((t) => (
+            <li key={t.id}>
+              <TripCard
+                trip={t}
+                total={totals[t.id] ?? 0}
+                selected={t.id === selectedId}
+                onSelect={() => onSelect(t.id)}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function TripCard({ trip, total, selected, onSelect, featured }: {
+  trip: Trip;
+  total: number;
+  selected: boolean;
+  onSelect: () => void;
+  featured?: boolean;
+}) {
+  const balance = trip.advance != null ? trip.advance - total : null;
+  return (
+    <Link
+      to="/trips/$id"
+      params={{ id: trip.id }}
+      onClick={onSelect}
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border px-4 py-3.5 active:bg-accent transition",
+        featured ? "bg-primary/5 border-primary/30" : "bg-card border-border",
+        selected && !featured && "ring-2 ring-primary/40",
+      )}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="truncate text-base font-semibold">{trip.title}</h3>
+          {trip.has_pdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="PDF disponibile" />}
+          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" aria-label="Selezionata" />}
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground truncate">
+          {formatDate(trip.start_date)} – {formatDate(trip.end_date)}
+        </p>
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLOR[trip.status]}`}>
+            <Circle className="h-1.5 w-1.5 fill-current stroke-none" />
+            {STATUS_LABEL[trip.status]}
+          </span>
+          {balance != null && (
+            <span className={`text-[10px] font-medium ${balance >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              Saldo {eur(balance)}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="text-base font-semibold tabular-nums">{eur(total)}</div>
+        <div className="text-[10px] text-muted-foreground">totale</div>
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+    </Link>
   );
 }

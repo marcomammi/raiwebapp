@@ -22,7 +22,6 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showRequest, setShowRequest] = useState(false);
 
   useEffect(() => {
     if (ready && user) navigate({ to: "/trips", replace: true });
@@ -53,7 +52,7 @@ function LoginPage() {
     }
     try {
       await requestAccess({ email: em });
-      toast.success("Richiesta inviata.");
+      toast.success("Richiesta inviata. Un amministratore ti contatterà.");
     } catch (err) {
       toast.message(err instanceof Error ? err.message : "Richiesta non disponibile.");
     }
@@ -113,23 +112,6 @@ function LoginPage() {
           >
             Richiedi accesso
           </button>
-        </div>
-
-        <div className="mt-8">
-          <button
-            type="button"
-            onClick={() => setShowRequest((v) => !v)}
-            className="w-full text-xs text-muted-foreground underline-offset-4 hover:underline"
-          >
-            {showRequest ? "Nascondi credenziali demo" : "Mostra credenziali demo (preview)"}
-          </button>
-          {showRequest && (
-            <div className="mt-3 rounded-xl border border-dashed border-border bg-muted/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
-              <p className="font-medium text-foreground">Solo preview — da rimuovere in produzione.</p>
-              <p className="mt-1">Utente: <code>user@{ALLOWED_EMAIL_DOMAIN}</code> · <code>Demo.User.2026!</code></p>
-              <p>Admin: <code>admin@{ALLOWED_EMAIL_DOMAIN}</code> · <code>Demo.Admin.2026!</code></p>
-            </div>
-          )}
         </div>
       </div>
     </div>

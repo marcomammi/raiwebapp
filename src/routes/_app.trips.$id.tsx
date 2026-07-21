@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { ChevronLeft, MoreHorizontal, FileText, Download } from "lucide-react";
-import { getTrip, getExpensesForTrip, deleteExpense, generatePdf, updateMealBudget } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, MoreHorizontal, FileText, Download, Mail, X } from "lucide-react";
+import { getTrip, getExpensesForTrip, deleteExpense, generatePdf, emailPdf, updateMealBudget, type GeneratedPdf } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useSelectedTrip } from "@/lib/selected-trip";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/trips/$id")({
   head: () => ({ meta: [{ title: "Dettaglio trasferta" }, { name: "robots", content: "noindex" }] }),
@@ -21,6 +23,10 @@ function TripDetail() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("all");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pdfSheet, setPdfSheet] = useState(false);
+  const { setSelectedTripId } = useSelectedTrip();
+
+  useEffect(() => { setSelectedTripId(id); }, [id, setSelectedTripId]);
 
   const { data: trip } = useQuery({ queryKey: ["trip", id], queryFn: () => getTrip(id) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", id], queryFn: () => getExpensesForTrip(id) });
@@ -35,11 +41,12 @@ function TripDetail() {
     return { total, mealTotal, budgetTotal, diff, days };
   }, [expenses, trip]);
 
-  const pdfMutation = useMutation({
-    mutationFn: () => generatePdf(id),
-    onSuccess: () => toast.success("PDF generato dal server"),
-    onError: () => toast.error("Errore generazione PDF"),
-  });
+  const hasKmData = useMemo(
+    () => expenses.some((e) => e.category === "Carburante" || /\bkm\b/i.test(e.note ?? "")),
+    [expenses],
+  );
+
+  const openPdf = () => setPdfSheet(true);
 
   if (!trip) {
     return <div className="px-5 py-10 text-sm text-muted-foreground">Caricamento…</div>;
@@ -61,7 +68,7 @@ function TripDetail() {
           {menuOpen && (
             <div className="absolute right-0 top-10 w-48 rounded-xl border border-border bg-popover shadow-lg z-20 overflow-hidden text-sm">
               <button
-                onClick={() => { setMenuOpen(false); pdfMutation.mutate(); }}
+                onClick={() => { setMenuOpen(false); openPdf(); }}
                 className="w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-accent"
               >
                 <FileText className="h-4 w-4" /> Genera PDF
@@ -125,8 +132,84 @@ function TripDetail() {
       <div className="px-4 mt-4">
         {tab === "all" && <ExpensesList expenses={expenses} tripId={id} />}
         {tab === "meals" && <MealsList expenses={expenses} budget={trip.meal_budget_daily} />}
-        {tab === "docs" && <DocsList expenses={expenses} onGenerate={() => pdfMutation.mutate()} loading={pdfMutation.isPending} />}
-        {tab === "summary" && <SummaryView expenses={expenses} advance={trip.advance} onGenerate={() => pdfMutation.mutate()} loading={pdfMutation.isPending} />}
+        {tab === "docs" && <DocsList expenses={expenses} onGenerate={openPdf} hasKmData={hasKmData} />}
+        {tab === "summary" && <SummaryView expenses={expenses} advance={trip.advance} onGenerate={openPdf} hasKmData={hasKmData} />}
+      </div>
+
+      {pdfSheet && (
+        <PdfSheet tripId={id} hasKmData={hasKmData} onClose={() => setPdfSheet(false)} />
+      )}
+    </div>
+  );
+}
+
+function PdfSheet({ tripId, hasKmData, onClose }: { tripId: string; hasKmData: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState<null | "download" | "email">(null);
+
+  const download = async () => {
+    setBusy("download");
+    try {
+      const res: GeneratedPdf = await generatePdf(tripId);
+      // trigger download / open in new tab
+      if (typeof window !== "undefined") window.open(res.url, "_blank", "noopener");
+      toast.success(res.includesKmSchedule ? "Distinta e scheda km pronte" : "Distinta pronta");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore generazione PDF");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const send = async () => {
+    setBusy("email");
+    try {
+      await emailPdf(tripId);
+      toast.success(user?.email ? `Inviato a ${user.email}` : "Email inviata");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore invio email");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-background rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">Genera PDF</h2>
+          <button onClick={onClose} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Verrà generata la <span className="font-medium text-foreground">distinta</span>
+          {hasKmData && <> insieme alla <span className="font-medium text-foreground">scheda km</span></>}.
+        </p>
+        <div className="mt-4 space-y-2">
+          <button
+            onClick={download}
+            disabled={busy !== null}
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" /> {busy === "download" ? "Preparazione…" : "Scarica PDF"}
+          </button>
+          <button
+            onClick={send}
+            disabled={busy !== null || !user?.email}
+            className="w-full h-12 rounded-xl bg-card border border-border font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <Mail className="h-4 w-4" /> {busy === "email" ? "Invio…" : "Invia alla mia email"}
+          </button>
+          {user?.email && (
+            <p className="text-[11px] text-muted-foreground text-center">Verrà inviato a {user.email}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -205,16 +288,15 @@ function MealsList({ expenses, budget }: { expenses: Expense[]; budget: number }
   );
 }
 
-function DocsList({ expenses, onGenerate, loading }: { expenses: Expense[]; onGenerate: () => void; loading: boolean }) {
+function DocsList({ expenses, onGenerate, hasKmData }: { expenses: Expense[]; onGenerate: () => void; hasKmData: boolean }) {
   const withReceipts = expenses.filter((e) => e.receipt_url);
   return (
     <div className="space-y-3">
       <button
         onClick={onGenerate}
-        disabled={loading}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 active:scale-[0.99]"
       >
-        <Download className="h-4 w-4" /> {loading ? "Generazione…" : "Genera PDF distinta"}
+        <FileText className="h-4 w-4" /> Genera PDF{hasKmData ? " (distinta + scheda km)" : " distinta"}
       </button>
       {withReceipts.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border p-6 text-sm text-muted-foreground text-center">
@@ -235,7 +317,7 @@ function DocsList({ expenses, onGenerate, loading }: { expenses: Expense[]; onGe
   );
 }
 
-function SummaryView({ expenses, advance, onGenerate, loading }: { expenses: Expense[]; advance?: number; onGenerate: () => void; loading: boolean }) {
+function SummaryView({ expenses, advance, onGenerate, hasKmData }: { expenses: Expense[]; advance?: number; onGenerate: () => void; hasKmData: boolean }) {
   const sumBy = (cats: string[]) => expenses.filter((e) => cats.includes(e.category)).reduce((s, e) => s + e.amount, 0);
   const rows = [
     { label: "Pasti", value: sumBy(MEAL_CATEGORIES) },
@@ -274,10 +356,9 @@ function SummaryView({ expenses, advance, onGenerate, loading }: { expenses: Exp
       </div>
       <button
         onClick={onGenerate}
-        disabled={loading}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2"
       >
-        <Download className="h-4 w-4" /> {loading ? "Generazione…" : "Genera PDF"}
+        <FileText className="h-4 w-4" /> Genera PDF{hasKmData ? " (distinta + scheda km)" : ""}
       </button>
     </div>
   );

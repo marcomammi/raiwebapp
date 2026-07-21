@@ -20,7 +20,13 @@
 //   PATCH  /api/trips/:id/meal-budget
 //   POST   /api/trips/:id/generate-pdf
 
-import { ALLOWED_EMAIL_DOMAIN, SELF_REGISTRATION_ENABLED, isAllowedEmail } from "./config";
+import {
+  ALLOWED_EMAIL_DOMAIN,
+  API_BASE_URL as CFG_API_BASE_URL,
+  DEV_MOCK_TRIPS,
+  SELF_REGISTRATION_ENABLED,
+  isAllowedEmail,
+} from "./config";
 import type {
   AppUser,
   Expense,
@@ -32,13 +38,12 @@ import type {
   UserStatus,
 } from "./types";
 
-export const API_BASE_URL = "https://rai.marcomammi.com/api";
+export const API_BASE_URL = CFG_API_BASE_URL;
 
 const LS_TOKEN = "app.token";
 const LS_USER = "app.user";
 const LS_TRIPS = "app.mock.trips";
 const LS_EXPENSES = "app.mock.expenses";
-const LS_USERS = "app.mock.users";
 
 const isBrowser = () => typeof window !== "undefined";
 const delay = (ms = 220) => new Promise((r) => setTimeout(r, ms));
@@ -58,43 +63,67 @@ function write<T>(key: string, val: T) {
   localStorage.setItem(key, JSON.stringify(val));
 }
 
-// ---------- mock user credentials store ----------
-// PREVIEW-ONLY: hardcoded demo passwords keyed by user id. In production the
-// backend authenticates and returns a token; nothing here ships to prod.
-const MOCK_PASSWORDS: Record<string, string> = {
-  "u-demo-user": "Demo.User.2026!",
-  "u-demo-admin": "Demo.Admin.2026!",
-};
+// ---------- HTTP helpers ----------
+class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
 
-function seedUsers(): AppUser[] {
-  return [
-    {
-      id: "u-demo-user",
-      email: `user@${ALLOWED_EMAIL_DOMAIN}`,
-      firstName: "Demo",
-      lastName: "User",
-      employeeNumber: "000001",
-      role: "user",
-      status: "active",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "u-demo-admin",
-      email: `admin@${ALLOWED_EMAIL_DOMAIN}`,
-      firstName: "Demo",
-      lastName: "Admin",
-      employeeNumber: "000000",
-      role: "admin",
-      status: "active",
-      createdAt: new Date().toISOString(),
-    },
-  ];
+function authHeaders(): Record<string, string> {
+  if (!isBrowser()) return {};
+  const t = localStorage.getItem(LS_TOKEN);
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...authHeaders(),
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch {
+    throw new ApiError("Servizio non raggiungibile", 0, "network");
+  }
+  const text = await res.text();
+  const body = text ? safeJson(text) : null;
+  if (!res.ok) {
+    let msg = "";
+    if (body && typeof body === "object" && "message" in body) {
+      const m = (body as { message: unknown }).message;
+      if (typeof m === "string") msg = m;
+    }
+    if (!msg) {
+      msg = res.status === 401 ? "Credenziali non valide"
+        : res.status === 403 ? "Accesso negato"
+        : res.status === 404 ? "Risorsa non trovata"
+        : "Errore del server";
+    }
+    throw new ApiError(msg, res.status);
+  }
+  return body as T;
+}
+
+function safeJson(text: string): unknown {
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 // ---------- seed ----------
 function seed() {
-  if (!isBrowser()) return;
-  if (!localStorage.getItem(LS_USERS)) write(LS_USERS, seedUsers());
+  if (!isBrowser() || !DEV_MOCK_TRIPS) return;
   if (localStorage.getItem(LS_TRIPS)) return;
   const today = new Date();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -125,6 +154,7 @@ function seed() {
     { id: "e9", trip_id: "t1", category: "Pranzo", amount: 24, date: t1d2, paid_by: "employee", sync: "synced", source: "app" },
     { id: "e10", trip_id: "t2", category: "Hotel", amount: 220, date: iso(daysAgo(19)), paid_by: "company", sync: "synced", source: "app" },
     { id: "e11", trip_id: "t2", category: "Cena", amount: 35, date: iso(daysAgo(19)), paid_by: "employee", sync: "synced", source: "app" },
+    { id: "e12", trip_id: "t2", category: "Carburante", amount: 62, date: iso(daysAgo(18)), paid_by: "employee", note: "Rifornimento auto aziendale (250 km)", sync: "synced", source: "app" },
   ];
 
   write(LS_TRIPS, trips);
@@ -151,6 +181,25 @@ function toProfile(u: AppUser): UserProfile {
   };
 }
 
+function normalizeUser(raw: Record<string, unknown>): AppUser {
+  const s = (k: string) => (typeof raw[k] === "string" ? (raw[k] as string) : "");
+  const firstName = s("firstName") || s("first_name") || s("nome") || "";
+  const lastName = s("lastName") || s("last_name") || s("cognome") || "";
+  const employeeNumber = s("employeeNumber") || s("employee_number") || s("matricola") || "";
+  const role: UserRole = (raw.role === "admin" ? "admin" : "user");
+  const status: UserStatus = (raw.status === "disabled" ? "disabled" : "active");
+  return {
+    id: s("id") || uid(),
+    email: s("email"),
+    firstName,
+    lastName,
+    employeeNumber,
+    role,
+    status,
+    createdAt: s("createdAt") || s("created_at") || new Date().toISOString(),
+  };
+}
+
 // ---------- auth ----------
 export interface LoginResult {
   token: string;
@@ -158,34 +207,41 @@ export interface LoginResult {
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {
-  ensureSeed();
-  await delay();
   const em = email.trim().toLowerCase();
   if (!em || !password) throw new Error("Email e password obbligatorie");
-  const users = read<AppUser[]>(LS_USERS, []);
-  const found = users.find((u) => u.email.toLowerCase() === em);
-  if (!found) throw new Error("Credenziali non valide");
-  if (found.status === "disabled") throw new Error("Utente disattivato. Contatta un amministratore.");
-  const expected = MOCK_PASSWORDS[found.id];
-  if (!expected || expected !== password) throw new Error("Credenziali non valide");
-  const token = "mock." + uid();
-  const profile = toProfile(found);
+  const data = await apiFetch<{ token: string; user: Record<string, unknown> }>("/login", {
+    method: "POST",
+    body: JSON.stringify({ email: em, password }),
+  });
+  if (!data?.token || !data?.user) throw new Error("Risposta del server non valida");
+  const appUser = normalizeUser(data.user);
+  if (appUser.status === "disabled") throw new Error("Utente disattivato. Contatta un amministratore.");
+  const profile = toProfile(appUser);
   if (isBrowser()) {
-    localStorage.setItem(LS_TOKEN, token);
+    localStorage.setItem(LS_TOKEN, data.token);
     localStorage.setItem(LS_USER, JSON.stringify(profile));
   }
-  return { token, user: profile };
+  return { token: data.token, user: profile };
 }
 
 export async function logout(): Promise<void> {
   if (!isBrowser()) return;
+  try { await apiFetch("/logout", { method: "POST" }); } catch { /* best effort */ }
   localStorage.removeItem(LS_TOKEN);
   localStorage.removeItem(LS_USER);
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
-  const { user } = getStoredAuth();
-  return user;
+  const { token } = getStoredAuth();
+  if (!token) return null;
+  try {
+    const raw = await apiFetch<Record<string, unknown>>("/me");
+    const profile = toProfile(normalizeUser(raw));
+    if (isBrowser()) localStorage.setItem(LS_USER, JSON.stringify(profile));
+    return profile;
+  } catch {
+    return getStoredAuth().user;
+  }
 }
 
 export function getStoredAuth(): { token: string | null; user: UserProfile | null } {
@@ -211,82 +267,34 @@ function assertAllowedEmail(email: string) {
   }
 }
 
-function countActiveAdmins(users: AppUser[]): number {
-  return users.filter((u) => u.role === "admin" && u.status === "active").length;
-}
-
 export async function getUsers(): Promise<AppUser[]> {
-  ensureSeed();
-  await delay(120);
-  return read<AppUser[]>(LS_USERS, []).slice().sort((a, b) => a.email.localeCompare(b.email));
+  const raw = await apiFetch<Record<string, unknown>[]>("/admin/users");
+  return raw.map(normalizeUser).sort((a, b) => a.email.localeCompare(b.email));
 }
 
 export async function createUser(payload: UserPayload): Promise<AppUser> {
-  ensureSeed();
-  await delay(180);
   const email = payload.email.trim().toLowerCase();
   assertAllowedEmail(email);
-  const users = read<AppUser[]>(LS_USERS, []);
-  if (users.some((u) => u.email.toLowerCase() === email)) throw new Error("Esiste già un utente con questa email.");
   if (!payload.firstName.trim() || !payload.lastName.trim()) throw new Error("Nome e cognome sono obbligatori.");
   if (!payload.employeeNumber.trim()) throw new Error("Matricola obbligatoria.");
-  const newUser: AppUser = {
-    id: "u-" + uid(),
-    email,
-    firstName: payload.firstName.trim(),
-    lastName: payload.lastName.trim(),
-    employeeNumber: payload.employeeNumber.trim(),
-    role: payload.role,
-    status: payload.status,
-    createdAt: new Date().toISOString(),
-  };
-  write(LS_USERS, [...users, newUser]);
-  return newUser;
+  const raw = await apiFetch<Record<string, unknown>>("/admin/users", {
+    method: "POST",
+    body: JSON.stringify({ ...payload, email }),
+  });
+  return normalizeUser(raw);
 }
 
 export async function updateUser(id: string, payload: Partial<UserPayload>): Promise<AppUser> {
-  ensureSeed();
-  await delay(160);
-  const users = read<AppUser[]>(LS_USERS, []);
-  const idx = users.findIndex((u) => u.id === id);
-  if (idx < 0) throw new Error("Utente non trovato.");
-  const current = users[idx];
-  const next: AppUser = { ...current };
-  if (payload.email !== undefined) {
-    const email = payload.email.trim().toLowerCase();
-    assertAllowedEmail(email);
-    if (users.some((u) => u.id !== id && u.email.toLowerCase() === email)) throw new Error("Email già in uso.");
-    next.email = email;
-  }
-  if (payload.firstName !== undefined) next.firstName = payload.firstName.trim();
-  if (payload.lastName !== undefined) next.lastName = payload.lastName.trim();
-  if (payload.employeeNumber !== undefined) next.employeeNumber = payload.employeeNumber.trim();
-  if (payload.role !== undefined) next.role = payload.role;
-  if (payload.status !== undefined) next.status = payload.status;
-
-  // Guardrails: never leave the system without an active admin.
-  const wouldBeLastAdminLoss =
-    current.role === "admin" && current.status === "active" &&
-    (next.role !== "admin" || next.status !== "active");
-  if (wouldBeLastAdminLoss && countActiveAdmins(users) <= 1) {
-    throw new Error("Non puoi disattivare o declassare l'ultimo admin attivo.");
-  }
-
-  users[idx] = next;
-  write(LS_USERS, users);
-  return next;
+  if (payload.email !== undefined) assertAllowedEmail(payload.email.trim().toLowerCase());
+  const raw = await apiFetch<Record<string, unknown>>(`/admin/users/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return normalizeUser(raw);
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  ensureSeed();
-  await delay(140);
-  const users = read<AppUser[]>(LS_USERS, []);
-  const target = users.find((u) => u.id === id);
-  if (!target) throw new Error("Utente non trovato.");
-  if (target.role === "admin" && target.status === "active" && countActiveAdmins(users) <= 1) {
-    throw new Error("Non puoi cancellare l'ultimo admin attivo.");
-  }
-  write(LS_USERS, users.filter((u) => u.id !== id));
+  await apiFetch<void>(`/admin/users/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // ---------- future self-registration (disabled) ----------
@@ -299,12 +307,20 @@ export interface AccessRequestPayload {
 }
 
 export async function requestAccess(payload: AccessRequestPayload): Promise<{ queued: boolean }> {
-  await delay(180);
   assertAllowedEmail(payload.email.trim().toLowerCase());
-  if (!SELF_REGISTRATION_ENABLED) {
-    throw new Error("La registrazione autonoma non è ancora attiva. Contatta un amministratore.");
+  void SELF_REGISTRATION_ENABLED;
+  try {
+    await apiFetch<void>("/access-requests", {
+      method: "POST",
+      body: JSON.stringify({ ...payload, email: payload.email.trim().toLowerCase() }),
+    });
+    return { queued: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "network") {
+      throw new Error("Servizio non raggiungibile. Riprova più tardi.");
+    }
+    throw err;
   }
-  return { queued: true };
 }
 
 // ---------- trips ----------
@@ -393,9 +409,51 @@ export async function updateMealBudget(tripId: string, budget: number): Promise<
 }
 
 // ---------- pdf ----------
-export async function generatePdf(tripId: string): Promise<{ url: string }> {
-  await delay(500);
-  return { url: `${API_BASE_URL}/trips/${tripId}/report.pdf` };
+export interface GeneratedPdf {
+  url: string;
+  includesKmSchedule: boolean;
+  filename?: string;
+}
+
+export async function generatePdf(tripId: string): Promise<GeneratedPdf> {
+  // Real: POST /api/trips/:id/generate-pdf → { url, includesKmSchedule }
+  try {
+    const data = await apiFetch<{ url: string; includes_km_schedule?: boolean; filename?: string }>(
+      `/trips/${encodeURIComponent(tripId)}/generate-pdf`,
+      { method: "POST" },
+    );
+    return {
+      url: data.url,
+      includesKmSchedule: !!data.includes_km_schedule,
+      filename: data.filename,
+    };
+  } catch (err) {
+    if (DEV_MOCK_TRIPS && err instanceof ApiError && err.code === "network") {
+      await delay(400);
+      const expenses = read<Expense[]>(LS_EXPENSES, []).filter((e) => e.trip_id === tripId);
+      const includesKmSchedule = expenses.some((e) => e.category === "Carburante" || /\bkm\b/i.test(e.note ?? ""));
+      return {
+        url: `${API_BASE_URL}/trips/${tripId}/report.pdf`,
+        includesKmSchedule,
+        filename: `distinta-${tripId}.pdf`,
+      };
+    }
+    throw err;
+  }
+}
+
+export async function emailPdf(tripId: string): Promise<{ sent: boolean }> {
+  // Real: POST /api/trips/:id/email-pdf → { sent: true }
+  try {
+    await apiFetch<void>(`/trips/${encodeURIComponent(tripId)}/email-pdf`, { method: "POST" });
+    return { sent: true };
+  } catch (err) {
+    if (DEV_MOCK_TRIPS && err instanceof ApiError && err.code === "network") {
+      await delay(400);
+      return { sent: true };
+    }
+    throw err;
+  }
 }
 
 // ---------- shortcut helper ----------
