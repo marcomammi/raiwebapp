@@ -71,7 +71,7 @@ function write<T>(key: string, val: T) {
 }
 
 // ---------- HTTP helpers ----------
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
   code?: string;
   constructor(message: string, status: number, code?: string) {
@@ -91,9 +91,14 @@ async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  // Costruzione URL robusta: API_BASE_URL è già privo di slash finali,
+  // il path deve iniziare con "/". Evita "//" o path senza slash che
+  // provocano redirect Apache (es. "/api" -> "/api/") su alcune rotte.
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = `${API_BASE_URL}${normalizedPath}`;
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(url, {
       ...init,
       headers: {
         "Content-Type": "application/json",
