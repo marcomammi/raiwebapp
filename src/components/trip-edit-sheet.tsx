@@ -30,9 +30,6 @@ export function TripEditSheet({ trip, onClose }: Props) {
   const [advance, setAdvance] = useState(
     trip.advance != null ? formatAmountInput(trip.advance) : "",
   );
-  const [mealBudget, setMealBudget] = useState(
-    trip.meal_budget_daily != null ? formatAmountInput(trip.meal_budget_daily) : "",
-  );
   const [notes, setNotes] = useState(trip.notes ?? "");
   const [busy, setBusy] = useState(false);
 
@@ -44,18 +41,14 @@ export function TripEditSheet({ trip, onClose }: Props) {
     const adv = toNum(advance);
     if (adv !== null && (Number.isNaN(adv) || (adv as number) < 0))
       errs.push("L'anticipo deve essere un numero ≥ 0.");
-    const mb = toNum(mealBudget);
-    if (mb !== null && (Number.isNaN(mb) || (mb as number) < 0))
-      errs.push("Il budget pasti deve essere un numero ≥ 0.");
     return errs;
-  }, [title, startDate, endDate, advance, mealBudget]);
+  }, [title, startDate, endDate, advance]);
 
   const canSave = errors.length === 0 && !busy;
 
   const save = async () => {
     if (!canSave) return;
     const adv = toNum(advance);
-    const mb = toNum(mealBudget);
     const payload: TripUpdatePayload = {
       title: title.trim(),
       city: city.trim() || undefined,
@@ -66,7 +59,6 @@ export function TripEditSheet({ trip, onClose }: Props) {
       end_time: endTime || undefined,
       travel_sheet_number: travelSheet.trim() || undefined,
       advance: adv === null ? undefined : (adv as number),
-      meal_budget_daily: mb === null ? undefined : (mb as number),
       notes: notes.trim() || undefined,
     };
     setBusy(true);
@@ -175,30 +167,17 @@ export function TripEditSheet({ trip, onClose }: Props) {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Anticipo (€)">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={advance}
-                onChange={(e) => setAdvance(e.target.value.replace(/[^\d.,]/g, ""))}
-                onBlur={() => setAdvance((v) => (v ? normalizeAmountInput(v) : ""))}
-                placeholder="0,00"
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base tabular-nums"
-              />
-            </Field>
-            <Field label="Budget pasti giornaliero (€)">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={mealBudget}
-                onChange={(e) => setMealBudget(e.target.value.replace(/[^\d.,]/g, ""))}
-                onBlur={() => setMealBudget((v) => (v ? normalizeAmountInput(v) : ""))}
-                placeholder="0,00"
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base tabular-nums"
-              />
-            </Field>
-          </div>
+          <Field label="Anticipo (€)">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={advance}
+              onChange={(e) => setAdvance(e.target.value.replace(/[^\d.,]/g, ""))}
+              onBlur={() => setAdvance((v) => (v ? normalizeAmountInput(v) : ""))}
+              placeholder="0,00"
+              className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base tabular-nums"
+            />
+          </Field>
 
           <Field label="Note">
             <textarea
