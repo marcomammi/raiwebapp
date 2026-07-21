@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getAllExpenses, getTrips } from "@/lib/api";
+import { getExpensesForTrip } from "@/lib/api";
 import { eur, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES } from "@/lib/types";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useSelectedTrip } from "@/lib/selected-trip";
+import { TripHeader } from "@/components/trip-header";
 
 export const Route = createFileRoute("/_app/meals")({
   head: () => ({ meta: [{ title: "Pasti" }, { name: "robots", content: "noindex" }] }),
@@ -12,15 +14,17 @@ export const Route = createFileRoute("/_app/meals")({
 });
 
 function MealsPage() {
-  const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
-  const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
-
-  const activeTrip = trips.find((t) => t.status === "in_progress") ?? trips[0];
-  const budget = activeTrip?.meal_budget_daily ?? 46.48;
+  const { selectedTrip, selectedTripId } = useSelectedTrip();
+  const { data: expenses = [] } = useQuery({
+    queryKey: ["expenses", selectedTripId ?? "none"],
+    queryFn: () => (selectedTripId ? getExpensesForTrip(selectedTripId) : Promise.resolve([])),
+    enabled: !!selectedTripId,
+  });
+  const budget = selectedTrip?.meal_budget_daily ?? 46.48;
 
   const meals = useMemo(
-    () => expenses.filter((e) => MEAL_CATEGORIES.includes(e.category) && (!activeTrip || e.trip_id === activeTrip.id)),
-    [expenses, activeTrip],
+    () => expenses.filter((e) => MEAL_CATEGORIES.includes(e.category)),
+    [expenses],
   );
 
   const grouped = useMemo(() => {
@@ -46,10 +50,12 @@ function MealsPage() {
       <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Pasti</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          {activeTrip ? activeTrip.title : "Nessuna trasferta"}
+          {selectedTrip ? selectedTrip.title : "Nessuna trasferta"}
         </h1>
         <p className="mt-0.5 text-xs text-muted-foreground">Budget giornaliero {eur(budget)}</p>
       </header>
+
+      <TripHeader label="Trasferta selezionata" />
 
       <div className="px-4 grid grid-cols-3 gap-2">
         <MiniStat label="Totale" value={eur(totals.total)} />
