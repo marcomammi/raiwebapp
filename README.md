@@ -44,6 +44,27 @@ di calcolo e PDF: l'app non duplica dati, li consuma via API.
 - `POST /api/trips/:id/generate-pdf`, `POST /api/trips/:id/email-pdf`
 - `POST /api/trips` (creazione trasferta), `POST /api/travel-documents/parse` (upload biglietto)
 
+### Documenti di viaggio (upload multiplo)
+
+In `Nuova trasferta` è possibile caricare **più file insieme** (PDF o
+immagini): foglio viaggio, biglietti treno andata/ritorno o un unico PDF
+multipagina, più altri allegati. Ogni file ha un ruolo modificabile
+(`Foglio viaggio`, `Biglietto treno`, `Altro`) con default suggerito dal
+nome file e dalla posizione.
+
+I file vengono inviati in batch a `POST /api/travel-documents/parse`
+(multipart/form-data, campo `files[]` + JSON `metadata` con `role`,
+`filename`, `index`). Il backend può restituire `trip_fields`
+(numero foglio viaggio, anticipo, destinazione, date), `train_segments`
+(più tratte anche da un unico PDF), `expenses` e `documents`. I valori
+riconosciuti pre-compilano il form come suggerimenti sempre modificabili.
+
+Se il parser non è raggiungibile o non è ancora attivo, l'app mostra un
+messaggio contestuale (`Lettura automatica non disponibile. Puoi
+completare i dati manualmente e salvare comunque.`), mantiene i file in
+lista e offre `Riprova lettura` / `Inserisci manualmente`. Nessun dato
+viene inventato.
+
 ### Configurazione
 
 In `src/lib/config.ts`:
