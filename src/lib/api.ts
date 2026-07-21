@@ -35,7 +35,9 @@ import type {
   MealProfile,
   MealType,
   PaidBy,
+  TrainSegment,
   Trip,
+  TripStatus,
   UserProfile,
   UserRole,
   UserStatus,
@@ -345,7 +347,19 @@ export async function getTrips(): Promise<Trip[]> {
     return [...trips].sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
   }
   const raw = await apiFetch<Trip[]>("/trips");
-  return [...raw].sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
+  return [...raw].map(normalizeTrip).sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
+}
+
+// Il backend può usare `closed`, `completed`, `archived` come stati "passati":
+// li normalizziamo tutti su `closed` per la lista "Trasferte passate".
+function normalizeTrip(t: Trip): Trip {
+  const raw = t as unknown as Record<string, unknown>;
+  const st = String(raw.status ?? t.status ?? "").toLowerCase();
+  let status: TripStatus = t.status;
+  if (st === "in_progress" || st === "in-progress" || st === "open" || st === "active") status = "in_progress";
+  else if (st === "draft") status = "draft";
+  else if (st === "closed" || st === "completed" || st === "archived" || st === "done") status = "closed";
+  return { ...t, status };
 }
 
 export async function getTrip(id: string): Promise<Trip | null> {
@@ -355,11 +369,72 @@ export async function getTrip(id: string): Promise<Trip | null> {
     return read<Trip[]>(LS_TRIPS, []).find((t) => t.id === id) ?? null;
   }
   try {
-    return await apiFetch<Trip>(`/trips/${encodeURIComponent(id)}`);
+    const t = await apiFetch<Trip>(`/trips/${encodeURIComponent(id)}`);
+    return normalizeTrip(t);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
+}
+
+// ---------- create trip ----------
+export interface TripPayload {
+  title: string;
+  destination?: string;
+  start_date: string;
+  end_date: string;
+  start_time?: string;
+  end_time?: string;
+  notes?: string;
+  trains?: TrainSegment[];
+}
+
+export async function createTrip(payload: TripPayload): Promise<Trip> {
+  const t = await apiFetch<Trip>("/trips", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return normalizeTrip(t);
+}
+
+// ---------- travel document parsing (train tickets etc.) ----------
+export interface ParsedTravelDocument {
+  segments: TrainSegment[];
+  raw?: unknown;
+}
+
+export async function parseTravelDocument(file: File): Promise<ParsedTravelDocument> {
+  const form = new FormData();
+  form.append("file", file);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/travel-documents/parse`, {
+      method: "POST",
+      headers: { ...authHeaders() },
+      body: form,
+    });
+  } catch {
+    throw new ApiError("Servizio di parsing non raggiungibile", 0, "network");
+  }
+  if (!res.ok) {
+    throw new ApiError(
+      res.status === 415 ? "Formato non supportato" : "Impossibile leggere il documento",
+      res.status,
+    );
+  }
+  const data = (await res.json()) as ParsedTravelDocument;
+  return { segments: Array.isArray(data?.segments) ? data.segments : [], raw: data };
+}
+
+// ---------- update own profile ----------
+export async function updateMyProfile(payload: { mealProfile?: MealProfile }): Promise<UserProfile> {
+  const raw = await apiFetch<Record<string, unknown>>("/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  const profile = toProfile(normalizeUser(raw));
+  if (isBrowser()) localStorage.setItem(LS_USER, JSON.stringify(profile));
+  return profile;
 }
 
 export async function getExpensesForTrip(tripId: string): Promise<Expense[]> {
