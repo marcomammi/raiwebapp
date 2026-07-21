@@ -101,12 +101,17 @@ async function apiFetch<T>(
   const text = await res.text();
   const body = text ? safeJson(text) : null;
   if (!res.ok) {
-    const msg =
-      (body && typeof body === "object" && "message" in body && typeof (body as { message: unknown }).message === "string" && (body as { message: string }).message) ||
-      (res.status === 401 ? "Credenziali non valide" :
-       res.status === 403 ? "Accesso negato" :
-       res.status === 404 ? "Risorsa non trovata" :
-       "Errore del server");
+    let msg = "";
+    if (body && typeof body === "object" && "message" in body) {
+      const m = (body as { message: unknown }).message;
+      if (typeof m === "string") msg = m;
+    }
+    if (!msg) {
+      msg = res.status === 401 ? "Credenziali non valide"
+        : res.status === 403 ? "Accesso negato"
+        : res.status === 404 ? "Risorsa non trovata"
+        : "Errore del server";
+    }
     throw new ApiError(msg, res.status);
   }
   return body as T;
