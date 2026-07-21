@@ -9,27 +9,54 @@ const CORS = {
   "Access-Control-Max-Age": "86400",
 } as const;
 
+const CANONICAL_CATEGORIES = [
+  "Pranzo", "Cena", "Colazione", "Hotel", "City tax",
+  "Taxi", "Treno", "Aereo", "Mezzi pubblici", "Carburante", "Altro",
+] as const;
+
+function slugify(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")            // accenti
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
+    .toLowerCase()
+    .replace(/[_\-]+/g, " ")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const CATEGORY_ALIASES: Record<string, string> = {
-  pranzo: "Pranzo", lunch: "Pranzo",
-  cena: "Cena", dinner: "Cena",
-  colazione: "Colazione", breakfast: "Colazione",
-  hotel: "Hotel", albergo: "Hotel",
-  "city-tax": "City tax", "city tax": "City tax", citytax: "City tax",
-  taxi: "Taxi",
-  treno: "Treno", train: "Treno",
-  aereo: "Aereo", volo: "Aereo", flight: "Aereo",
-  mezzi: "Mezzi pubblici", "mezzi-pubblici": "Mezzi pubblici", "mezzi pubblici": "Mezzi pubblici",
-  bus: "Mezzi pubblici", metro: "Mezzi pubblici",
-  carburante: "Carburante", benzina: "Carburante", fuel: "Carburante",
-  altro: "Altro", other: "Altro",
+  "pranzo": "Pranzo", "lunch": "Pranzo",
+  "cena": "Cena", "dinner": "Cena",
+  "colazione": "Colazione", "breakfast": "Colazione",
+  "hotel": "Hotel", "albergo": "Hotel",
+  "city tax": "City tax", "citytax": "City tax", "tassa soggiorno": "City tax", "tassa di soggiorno": "City tax",
+  "taxi": "Taxi", "cab": "Taxi",
+  "treno": "Treno", "train": "Treno", "trenitalia": "Treno", "italo": "Treno",
+  "aereo": "Aereo", "volo": "Aereo", "flight": "Aereo", "plane": "Aereo",
+  "mezzi": "Mezzi pubblici", "mezzi pubblici": "Mezzi pubblici",
+  "trasporto pubblico": "Mezzi pubblici", "trasporti pubblici": "Mezzi pubblici",
+  "bus": "Mezzi pubblici", "autobus": "Mezzi pubblici",
+  "metro": "Mezzi pubblici", "metropolitana": "Mezzi pubblici",
+  "tram": "Mezzi pubblici",
+  "carburante": "Carburante", "benzina": "Carburante", "diesel": "Carburante",
+  "gasolio": "Carburante", "fuel": "Carburante", "gas": "Carburante",
+  "altro": "Altro", "other": "Altro", "varie": "Altro",
 };
-const CATEGORIES = new Set(Object.values(CATEGORY_ALIASES));
+for (const c of CANONICAL_CATEGORIES) CATEGORY_ALIASES[slugify(c)] = c;
 
 function normalizeCategory(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const t = raw.trim();
-  for (const c of CATEGORIES) if (c.toLowerCase() === t.toLowerCase()) return c;
-  return CATEGORY_ALIASES[t.toLowerCase()] ?? null;
+  const key = slugify(raw);
+  if (!key) return null;
+  if (CATEGORY_ALIASES[key]) return CATEGORY_ALIASES[key];
+  // fallback: partial match sui canonici (es. "mezzi pubblici roma")
+  for (const c of CANONICAL_CATEGORIES) {
+    const ck = slugify(c);
+    if (key === ck || key.startsWith(ck + " ") || key.endsWith(" " + ck) || key.includes(" " + ck + " ")) return c;
+  }
+  return null;
 }
 
 function parseAmount(raw: string | null | undefined): number | null {
@@ -59,14 +86,43 @@ async function readParams(request: Request): Promise<Record<string, string>> {
     const ct = request.headers.get("content-type") ?? "";
     try {
       if (ct.includes("application/json")) {
-        const body = (await request.json()) as Record<string, unknown>;
-        for (const [k, v] of Object.entries(body ?? {})) if (v != null) out[k] = String(v);
+        const text = await request.text();
+        if (text.trim()) {
+          const body = JSON.parse(text) as Record<string, unknown>;
+          for (const [k, v] of Object.entries(body ?? {})) if (v != null && out[k] == null) out[k] = String(v);
+        }
       } else if (ct.includes("application/x-www-form-urlencoded") || ct.includes("multipart/form-data")) {
         const fd = await request.formData();
-        fd.forEach((v, k) => { out[k] = typeof v === "string" ? v : ""; });
+        fd.forEach((v, k) => { if (out[k] == null) out[k] = typeof v === "string" ? v : ""; });
+      } else {
+        // Prova a interpretare come JSON se il body è presente ma senza content-type
+        const text = await request.text();
+        const trimmed = text.trim();
+        if (trimmed.startsWith("{")) {
+          try {
+            const body = JSON.parse(trimmed) as Record<string, unknown>;
+            for (const [k, v] of Object.entries(body ?? {})) if (v != null && out[k] == null) out[k] = String(v);
+          } catch { /* ignore */ }
+        }
       }
     } catch { /* ignore */ }
   }
+  // Alias comuni: importo/amt/valore, categoria/cat/tipo
+  const alias = (from: string, to: string) => {
+    if (out[to] == null && out[from] != null) out[to] = out[from];
+  };
+  alias("importo", "amount");
+  alias("amt", "amount");
+  alias("valore", "amount");
+  alias("value", "amount");
+  alias("price", "amount");
+  alias("categoria", "category");
+  alias("cat", "category");
+  alias("tipo", "category");
+  alias("type", "category");
+  alias("nota", "note");
+  alias("descrizione", "note");
+  alias("data", "date");
   return out;
 }
 
@@ -83,7 +139,14 @@ async function handle(request: Request): Promise<Response> {
   const amount = parseAmount(p.amount);
   if (amount == null) return json(400, { ok: false, message: "Importo mancante o non valido." });
   const category = normalizeCategory(p.category);
-  if (!category) return json(400, { ok: false, message: `Categoria non valida${p.category ? `: "${p.category}"` : ""}.` });
+  if (!category) {
+    return json(400, {
+      ok: false,
+      message: `Categoria non valida${p.category ? `: "${p.category}"` : " (parametro mancante)"}. Accettate: ${CANONICAL_CATEGORIES.join(", ")}.`,
+      received: p.category ?? null,
+      accepted: CANONICAL_CATEGORIES,
+    });
+  }
   const date = p.date && /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : today();
   const paid_by = p.paid_by === "company" ? "company" : "employee";
   const payload = {
