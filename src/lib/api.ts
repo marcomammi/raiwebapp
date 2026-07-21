@@ -398,11 +398,51 @@ export interface TripPayload {
   trains?: TrainSegment[];
   travel_sheet_number?: string;
   advance?: number;
+  meal_budget_daily?: number;
 }
 
 export async function createTrip(payload: TripPayload): Promise<Trip> {
   const t = await apiFetch<Trip>("/trips", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return normalizeTrip(t);
+}
+
+export type TripUpdatePayload = Partial<TripPayload>;
+
+/**
+ * Aggiorna le impostazioni di una trasferta esistente.
+ * Backend reale: PATCH /trips/:id
+ * Mock: aggiorna direttamente LS_TRIPS con i campi forniti.
+ */
+export async function updateTrip(tripId: string, payload: TripUpdatePayload): Promise<Trip> {
+  if (DEV_MOCK_TRIPS) {
+    await delay(150);
+    const trips = read<Trip[]>(LS_TRIPS, []);
+    const idx = trips.findIndex((t) => t.id === tripId);
+    if (idx < 0) throw new Error("Trasferta non trovata");
+    const prev = trips[idx];
+    const next: Trip = {
+      ...prev,
+      ...(payload.title !== undefined ? { title: payload.title } : {}),
+      ...(payload.destination !== undefined ? { destination: payload.destination } : {}),
+      ...(payload.city !== undefined ? { city: payload.city } : {}),
+      ...(payload.start_date !== undefined ? { start_date: payload.start_date } : {}),
+      ...(payload.end_date !== undefined ? { end_date: payload.end_date } : {}),
+      ...(payload.start_time !== undefined ? { start_time: payload.start_time } : {}),
+      ...(payload.end_time !== undefined ? { end_time: payload.end_time } : {}),
+      ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
+      ...(payload.travel_sheet_number !== undefined ? { travel_sheet_number: payload.travel_sheet_number } : {}),
+      ...(payload.advance !== undefined ? { advance: payload.advance } : {}),
+      ...(payload.meal_budget_daily !== undefined ? { meal_budget_daily: payload.meal_budget_daily } : {}),
+    };
+    trips[idx] = next;
+    write(LS_TRIPS, trips);
+    return next;
+  }
+  const t = await apiFetch<Trip>(`/trips/${encodeURIComponent(tripId)}`, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
   return normalizeTrip(t);
