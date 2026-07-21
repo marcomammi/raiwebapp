@@ -34,6 +34,9 @@ import type {
   MealMode,
   MealType,
   PaidBy,
+  ParsedTravelDocumentsResult,
+  TravelDocument,
+  TravelDocumentRole,
   TrainSegment,
   Trip,
   TripStatus,
@@ -370,12 +373,15 @@ export async function getTrip(id: string): Promise<Trip | null> {
 export interface TripPayload {
   title: string;
   destination?: string;
+  city?: string;
   start_date: string;
   end_date: string;
   start_time?: string;
   end_time?: string;
   notes?: string;
   trains?: TrainSegment[];
+  travel_sheet_number?: string;
+  advance?: number;
 }
 
 export async function createTrip(payload: TripPayload): Promise<Trip> {
@@ -387,14 +393,36 @@ export async function createTrip(payload: TripPayload): Promise<Trip> {
 }
 
 // ---------- travel document parsing (train tickets etc.) ----------
-export interface ParsedTravelDocument {
-  segments: TrainSegment[];
-  raw?: unknown;
+export interface TravelDocumentUpload {
+  file: File;
+  role: TravelDocumentRole;
+  filename?: string;
+  client_id?: string;
 }
 
-export async function parseTravelDocument(file: File): Promise<ParsedTravelDocument> {
+/**
+ * Batch parsing di documenti di viaggio (foglio viaggio + biglietti treno).
+ * Endpoint: POST /api/travel-documents/parse (multipart/form-data).
+ * Invia tutti i file come `files[]` + un JSON `metadata` con ruolo/filename/index.
+ * Il backend può rispondere con `trip_fields`, `train_segments`, `expenses`, `documents`.
+ * Se il parser non è raggiungibile o l'endpoint non è ancora attivo, lancia
+ * un ApiError con code "network" o "unavailable": l'UI mostra un fallback
+ * neutro e mantiene i file per il completamento manuale.
+ */
+export async function parseTravelDocuments(
+  uploads: TravelDocumentUpload[],
+): Promise<ParsedTravelDocumentsResult> {
+  if (!uploads.length) return {};
   const form = new FormData();
-  form.append("file", file);
+  const metadata = uploads.map((u, i) => ({
+    index: i,
+    filename: u.filename ?? u.file.name,
+    role: u.role,
+    client_id: u.client_id,
+  }));
+  uploads.forEach((u) => form.append("files[]", u.file, u.filename ?? u.file.name));
+  form.append("metadata", JSON.stringify(metadata));
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}/travel-documents/parse`, {
@@ -403,17 +431,37 @@ export async function parseTravelDocument(file: File): Promise<ParsedTravelDocum
       body: form,
     });
   } catch {
-    throw new ApiError("Servizio di parsing non raggiungibile", 0, "network");
+    throw new ApiError("Lettura automatica non disponibile", 0, "network");
+  }
+  if (res.status === 404 || res.status === 501 || res.status === 503) {
+    throw new ApiError("Lettura automatica non disponibile", res.status, "unavailable");
   }
   if (!res.ok) {
     throw new ApiError(
-      res.status === 415 ? "Formato non supportato" : "Impossibile leggere il documento",
+      res.status === 415 ? "Formato non supportato" : "Impossibile leggere i documenti",
       res.status,
     );
   }
-  const data = (await res.json()) as ParsedTravelDocument;
-  return { segments: Array.isArray(data?.segments) ? data.segments : [], raw: data };
+  const data = (await res.json().catch(() => null)) as ParsedTravelDocumentsResult | null;
+  if (!data || typeof data !== "object") return {};
+  return {
+    trip_fields: data.trip_fields,
+    train_segments: Array.isArray(data.train_segments) ? data.train_segments : [],
+    expenses: Array.isArray(data.expenses) ? data.expenses : [],
+    documents: Array.isArray(data.documents) ? data.documents : [],
+    raw: data,
+  };
 }
+
+/** Suggerisce un ruolo iniziale in base al nome file e alla posizione. */
+export function suggestDocumentRole(filename: string, isFirst: boolean): TravelDocumentRole {
+  const n = filename.toLowerCase();
+  if (/(treno|train|ticket|biglietto|frecc|italo|trenitalia)/.test(n)) return "train_ticket";
+  if (/(foglio|travel[-_ ]?sheet|missione|trasferta)/.test(n)) return "travel_sheet";
+  return isFirst ? "travel_sheet" : "other";
+}
+
+export type { TravelDocument, TravelDocumentRole, ParsedTravelDocumentsResult };
 
 export async function getExpensesForTrip(tripId: string): Promise<Expense[]> {
   if (DEV_MOCK_TRIPS) {
