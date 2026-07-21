@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FileText, Circle, CheckCircle2, Plus } from "lucide-react";
 import { getAllExpenses } from "@/lib/api";
@@ -27,7 +27,13 @@ const STATUS_COLOR: Record<TripStatus, string> = {
 
 function TripsPage() {
   const { trips, isLoading, selectedTripId, setSelectedTripId, refetch, isError } = useSelectedTrip();
+  const navigate = useNavigate();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
+
+  const openTrip = (id: string) => {
+    setSelectedTripId(id);
+    navigate({ to: "/expenses" });
+  };
 
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
@@ -88,7 +94,7 @@ function TripsPage() {
                 trip={inProgress}
                 total={totals[inProgress.id] ?? 0}
                 selected={inProgress.id === selectedTripId}
-                onSelect={() => setSelectedTripId(inProgress.id)}
+                onSelect={() => openTrip(inProgress.id)}
                 featured
               />
             ) : (
@@ -102,7 +108,7 @@ function TripsPage() {
             trips={closed}
             totals={totals}
             selectedId={selectedTripId}
-            onSelect={setSelectedTripId}
+            onSelect={openTrip}
             empty="Nessuna trasferta conclusa."
           />
           <Section
@@ -110,7 +116,7 @@ function TripsPage() {
             trips={drafts}
             totals={totals}
             selectedId={selectedTripId}
-            onSelect={setSelectedTripId}
+            onSelect={openTrip}
             empty="Nessuna bozza."
           />
         </div>
@@ -162,12 +168,11 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
     ? trip.advance_balance
     : trip.advance != null ? trip.advance - effectiveTotal : null;
   return (
-    <Link
-      to="/trips/$id"
-      params={{ id: trip.id }}
+    <button
+      type="button"
       onClick={onSelect}
       className={cn(
-        "flex items-center gap-3 rounded-2xl border px-4 py-3.5 active:bg-accent transition",
+        "w-full text-left flex items-center gap-3 rounded-2xl border px-4 py-3.5 active:bg-accent transition",
         featured ? "bg-primary/5 border-primary/30" : "bg-card border-border",
         selected && !featured && "ring-2 ring-primary/40",
       )}
@@ -198,6 +203,6 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
         <div className="text-[10px] text-muted-foreground">totale</div>
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-    </Link>
+    </button>
   );
 }

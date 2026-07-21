@@ -1,15 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, MoreHorizontal, FileText, Download, Mail, X } from "lucide-react";
-import { getTrip, getExpensesForTrip, generatePdf, emailPdf, updateMealBudget, type GeneratedPdf } from "@/lib/api";
+import { ChevronLeft, MoreHorizontal, FileText } from "lucide-react";
+import { getTrip, getExpensesForTrip, updateMealBudget } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
-import { useAuth } from "@/lib/auth";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
+import { PdfSheet } from "@/components/pdf-sheet";
 import {
   countsInTotal,
   entitlementBudget,
@@ -159,78 +159,6 @@ function TripDetail() {
       {editing && (
         <ExpenseEditSheet expense={editing} trip={trip} onClose={() => setEditing(null)} />
       )}
-    </div>
-  );
-}
-
-function PdfSheet({ tripId, hasKmData, onClose }: { tripId: string; hasKmData: boolean; onClose: () => void }) {
-  const { user } = useAuth();
-  const [busy, setBusy] = useState<null | "download" | "email">(null);
-
-  const download = async () => {
-    setBusy("download");
-    try {
-      const res: GeneratedPdf = await generatePdf(tripId);
-      // trigger download / open in new tab
-      if (typeof window !== "undefined") window.open(res.url, "_blank", "noopener");
-      toast.success(res.includesKmSchedule ? "Distinta e scheda km pronte" : "Distinta pronta");
-      onClose();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore generazione PDF");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const send = async () => {
-    setBusy("email");
-    try {
-      await emailPdf(tripId);
-      toast.success(user?.email ? `Inviato a ${user.email}` : "Email inviata");
-      onClose();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore invio email");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-background rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Genera PDF</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Verrà generata la <span className="font-medium text-foreground">distinta</span>
-          {hasKmData && <> insieme alla <span className="font-medium text-foreground">scheda km</span></>}.
-        </p>
-        <div className="mt-4 space-y-2">
-          <button
-            onClick={download}
-            disabled={busy !== null}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" /> {busy === "download" ? "Preparazione…" : "Scarica PDF"}
-          </button>
-          <button
-            onClick={send}
-            disabled={busy !== null || !user?.email}
-            className="w-full h-12 rounded-xl bg-card border border-border font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <Mail className="h-4 w-4" /> {busy === "email" ? "Invio…" : "Invia alla mia email"}
-          </button>
-          {user?.email && (
-            <p className="text-[11px] text-muted-foreground text-center">Verrà inviato a {user.email}</p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

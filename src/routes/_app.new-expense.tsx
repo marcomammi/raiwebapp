@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createExpense, getTrips } from "@/lib/api";
 import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
 import { isMealAllowed } from "@/lib/trip-utils";
-import { categoryIcon, todayISO } from "@/lib/format";
+import { categoryIcon, formatAmountInput, normalizeAmountInput, todayISO } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +49,7 @@ function NewExpensePage() {
   const snapshot = selectedTrip?.meal_rules_snapshot;
   const forfaitAmount = snapshot?.forfait_amount;
   const forfaitAvailable = typeof forfaitAmount === "number" && forfaitAmount > 0;
-  const forfaitAmountStr = forfaitAvailable
-    ? String(forfaitAmount).replace(".", ",")
-    : "";
+  const forfaitAmountStr = forfaitAvailable ? formatAmountInput(forfaitAmount) : "";
   const displayedAmount = isMeal && forfait && forfaitAvailable ? forfaitAmountStr : amount;
   const amountLocked = isMeal && forfait;
   const mealCheck = isMeal && mealType ? isMealAllowed(selectedTrip, date, mealType) : null;
@@ -67,18 +65,19 @@ function NewExpensePage() {
     if (mealBlocked) return toast.error(mealMessage!);
     const effective = isMeal && forfait
       ? (forfaitAvailable ? String(forfaitAmount) : "")
-      : amount;
+      : amount.replace(",", ".");
     if (isMeal && forfait && !forfaitAvailable) {
       return toast.error("Importo forfait non disponibile");
     }
-    const n = Number(effective.replace(",", "."));
+    const n = Number(effective);
     if (!Number.isFinite(n) || n <= 0) return toast.error("Importo non valido");
+    const rounded = Math.round(n * 100) / 100;
     if (!tripId) return toast.error("Seleziona una trasferta");
     setSaving(true);
     try {
       const mealMode: MealMode | undefined = isMeal ? (forfait ? "forfait" : "receipt") : undefined;
       await createExpense(tripId, {
-        category, amount: n, date, note: note || undefined,
+        category, amount: rounded, date, note: note || undefined,
         paid_by: paidBy,
         receipt_url: forfait ? undefined : receipt,
         source: "app",
@@ -140,6 +139,7 @@ function NewExpensePage() {
                 value={displayedAmount}
                 readOnly={amountLocked}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                onBlur={() => !amountLocked && setAmount((v) => normalizeAmountInput(v))}
                 className={cn(
                   "w-40 text-center text-5xl font-semibold tabular-nums bg-transparent border-0 focus:outline-none",
                   amountLocked && "text-muted-foreground",

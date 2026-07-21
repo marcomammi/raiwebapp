@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { X, Plus, Trash2, Upload, FileText, AlertCircle, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
 import { createTrip, parseTravelDocuments, suggestDocumentRole } from "@/lib/api";
+import { extractTextFromFile } from "@/lib/ocr";
 import type { PaidBy, TrainSegment, TravelDocument, TravelDocumentRole } from "@/lib/types";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { todayISO } from "@/lib/format";
@@ -68,11 +69,34 @@ function NewTripPage() {
   const runParse = async (docs: TravelDocument[]) => {
     if (!docs.length) return;
     const ids = new Set(docs.map((d) => d.id));
-    setDocuments((arr) => arr.map((d) => (ids.has(d.id) ? { ...d, status: "parsing", error: undefined } : d)));
+    // Prima fase: OCR locale (rende visibile "Lettura OCR..." nella riga).
+    setDocuments((arr) =>
+      arr.map((d) => (ids.has(d.id) ? { ...d, status: "parsing", error: "Lettura OCR…" } : d)),
+    );
     setParsing(true);
+    // OCR in parallelo per ogni doc
+    const withText = await Promise.all(
+      docs.map(async (d) => {
+        try {
+          const { text } = await extractTextFromFile(d.file);
+          return { doc: d, text };
+        } catch {
+          return { doc: d, text: "" };
+        }
+      }),
+    );
+    setDocuments((arr) =>
+      arr.map((d) => (ids.has(d.id) ? { ...d, status: "parsing", error: undefined } : d)),
+    );
     try {
       const res = await parseTravelDocuments(
-        docs.map((d) => ({ file: d.file, role: d.role, filename: d.filename, client_id: d.id })),
+        withText.map(({ doc, text }) => ({
+          file: doc.file,
+          role: doc.role,
+          filename: doc.filename,
+          client_id: doc.id,
+          client_text: text || undefined,
+        })),
       );
       setParserUnavailable(false);
       // Precompila trip
