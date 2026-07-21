@@ -55,7 +55,7 @@ function ShortcutsPage() {
 
       <div className="px-4">
         <div className="rounded-2xl bg-card border border-border p-4">
-          <div className="text-sm font-semibold mb-2">Metodo consigliato (in background)</div>
+          <div className="text-sm font-semibold mb-2">Metodo consigliato (GET in background, nessun corpo)</div>
           <ol className="list-decimal pl-5 space-y-1.5 text-sm text-muted-foreground">
             <li>Apri l'app Comandi su iPhone e crea un nuovo comando con <span className="font-medium text-foreground">+</span>.</li>
             <li>Aggiungi <span className="font-medium text-foreground">Chiedi input</span> tipo Numero, domanda: "Importo".</li>
@@ -66,7 +66,7 @@ function ShortcutsPage() {
                 <li className="break-all [overflow-wrap:anywhere]">URL: <span className="font-mono text-foreground">{QUICK_URL}</span></li>
                 <li>Metodo: <span className="font-mono text-foreground">GET</span></li>
                 <li className="break-all [overflow-wrap:anywhere]">Header: <span className="font-mono text-foreground">Authorization: Bearer &lt;TOKEN&gt;</span></li>
-                <li>Nessun corpo. I parametri passano come query string.</li>
+                <li><span className="font-medium text-foreground">Nessun corpo richiesta.</span> I parametri (amount, category) passano come query string.</li>
               </ul>
             </li>
             <li>Non aggiungere <span className="font-medium text-foreground">Apri URL</span>: resta tutto in background.</li>
@@ -125,10 +125,10 @@ function ShortcutsPage() {
 
       <div className="px-4 mt-3">
         <details className="rounded-2xl bg-card border border-border p-4 text-sm">
-          <summary className="cursor-pointer text-muted-foreground">Metodo avanzato: POST JSON</summary>
+          <summary className="cursor-pointer text-muted-foreground">Metodo avanzato: POST JSON (sconsigliato)</summary>
           <p className="mt-2 text-[12px] text-muted-foreground">
-            In alternativa puoi usare direttamente il proxy same-origin con metodo POST e corpo JSON.
-            Anche qui il token va SOLO nell'header Authorization.
+            Alternativa via proxy same-origin con POST e corpo JSON. I parametri devono comunque
+            essere validi (category tra quelle accettate). Token SOLO nell'header Authorization.
           </p>
           <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">
             {ADVANCED_URL}
