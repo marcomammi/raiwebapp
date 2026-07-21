@@ -1,14 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FileText, Circle, CheckCircle2, Plus, Settings2 } from "lucide-react";
+import { ChevronRight, FileText, Circle, CheckCircle2, Plus } from "lucide-react";
 import { getAllExpenses } from "@/lib/api";
 import { eur, formatDate } from "@/lib/format";
 import type { Trip, TripStatus } from "@/lib/types";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 import { countsInTotal } from "@/lib/trip-utils";
-import { TripEditSheet } from "@/components/trip-edit-sheet";
 
 export const Route = createFileRoute("/_app/trips")({
   head: () => ({ meta: [{ title: "Trasferte" }, { name: "robots", content: "noindex" }] }),
@@ -30,7 +29,6 @@ function TripsPage() {
   const { trips, isLoading, selectedTripId, setSelectedTripId, refetch, isError } = useSelectedTrip();
   const navigate = useNavigate();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
-  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   const openTrip = (id: string) => {
     setSelectedTripId(id);
@@ -97,7 +95,6 @@ function TripsPage() {
                 total={totals[inProgress.id] ?? 0}
                 selected={inProgress.id === selectedTripId}
                 onSelect={() => openTrip(inProgress.id)}
-                onEdit={() => setEditingTrip(inProgress)}
                 featured
               />
             ) : (
@@ -112,7 +109,6 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
-            onEdit={(t) => setEditingTrip(t)}
             empty="Nessuna trasferta conclusa."
           />
           <Section
@@ -121,25 +117,20 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
-            onEdit={(t) => setEditingTrip(t)}
             empty="Nessuna bozza."
           />
         </div>
-      )}
-      {editingTrip && (
-        <TripEditSheet trip={editingTrip} onClose={() => setEditingTrip(null)} />
       )}
     </div>
   );
 }
 
-function Section({ title, trips, totals, selectedId, onSelect, onEdit, empty }: {
+function Section({ title, trips, totals, selectedId, onSelect, empty }: {
   title: string;
   trips: Trip[];
   totals: Record<string, number>;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onEdit: (t: Trip) => void;
   empty: string;
 }) {
   return (
@@ -156,7 +147,6 @@ function Section({ title, trips, totals, selectedId, onSelect, onEdit, empty }: 
                 total={totals[t.id] ?? 0}
                 selected={t.id === selectedId}
                 onSelect={() => onSelect(t.id)}
-                onEdit={() => onEdit(t)}
               />
             </li>
           ))}
@@ -166,12 +156,11 @@ function Section({ title, trips, totals, selectedId, onSelect, onEdit, empty }: 
   );
 }
 
-function TripCard({ trip, total, selected, onSelect, onEdit, featured }: {
+function TripCard({ trip, total, selected, onSelect, featured }: {
   trip: Trip;
   total: number;
   selected: boolean;
   onSelect: () => void;
-  onEdit: () => void;
   featured?: boolean;
 }) {
   const effectiveTotal = typeof trip.spent_total === "number" ? trip.spent_total : total;
@@ -212,18 +201,14 @@ function TripCard({ trip, total, selected, onSelect, onEdit, featured }: {
           )}
         </div>
       </button>
-      <div className="text-right shrink-0">
-        <div className="text-base font-semibold tabular-nums">{eur(effectiveTotal)}</div>
-        <div className="text-[10px] text-muted-foreground">totale</div>
-      </div>
       <button
         type="button"
-        data-testid="edit-trip-from-list"
-        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-        className="shrink-0 h-9 w-9 grid place-items-center rounded-full bg-primary text-primary-foreground active:opacity-90"
-        aria-label="Modifica trasferta"
+        onClick={onSelect}
+        className="text-right shrink-0 active:opacity-80"
+        aria-label="Apri trasferta"
       >
-        <Settings2 className="h-4 w-4" />
+        <div className="text-base font-semibold tabular-nums">{eur(effectiveTotal)}</div>
+        <div className="text-[10px] text-muted-foreground">totale</div>
       </button>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
     </div>
