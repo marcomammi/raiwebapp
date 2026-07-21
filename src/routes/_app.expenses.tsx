@@ -63,7 +63,7 @@ function ExpensesPage() {
         )}
       </header>
 
-      <TripHeader label="Trasferta selezionata" />
+      <TripHeader label="Trasferta selezionata" showEditButton />
 
       <div className="px-4 mt-3 space-y-4">
         {grouped.map(([date, items]) => {
