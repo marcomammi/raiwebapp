@@ -6,6 +6,7 @@ interface AuthCtx {
   user: UserProfile | null;
   token: string | null;
   ready: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
 }
@@ -31,12 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
-    apiLogout();
+    void apiLogout();
     setToken(null);
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, token, ready, signIn, signOut }), [user, token, ready, signIn, signOut]);
+  const isAdmin = user?.role === "admin";
+  const value = useMemo(
+    () => ({ user, token, ready, isAdmin, signIn, signOut }),
+    [user, token, ready, isAdmin, signIn, signOut],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
