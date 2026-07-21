@@ -79,13 +79,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Trasferte — Spese di viaggio" },
+      { title: "Gestione Trasferte" },
       { name: "description", content: "App mobile per gestire spese, pasti e trasferte in mobilità." },
       { name: "author", content: "Trasferte" },
-      { property: "og:title", content: "Trasferte" },
-      { property: "og:description", content: "Gestisci spese e pasti di trasferta dal tuo iPhone." },
+      { property: "og:title", content: "Gestione Trasferte" },
+      { property: "og:description", content: "App mobile per gestire spese, pasti e trasferte in mobilità." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Gestione Trasferte" },
+      { name: "twitter:description", content: "App mobile per gestire spese, pasti e trasferte in mobilità." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42d1a4bf-42fa-430c-ab47-d7d183f099cf/id-preview-b91f6228--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784644864594.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42d1a4bf-42fa-430c-ab47-d7d183f099cf/id-preview-b91f6228--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784644864594.png" },
     ],
     links: [
       {
