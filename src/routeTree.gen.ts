@@ -13,6 +13,7 @@ import { Route as ShortcutExpenseRouteImport } from './routes/shortcut-expense'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShortcutApiAddExpenseRouteImport } from './routes/shortcut-api.add-expense'
 import { Route as ApiProxySplatRouteImport } from './routes/api-proxy.$'
 import { Route as AppTripsRouteImport } from './routes/_app.trips'
 import { Route as AppShortcutsRouteImport } from './routes/_app.shortcuts'
@@ -41,6 +42,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShortcutApiAddExpenseRoute = ShortcutApiAddExpenseRouteImport.update({
+  id: '/shortcut-api/add-expense',
+  path: '/shortcut-api/add-expense',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProxySplatRoute = ApiProxySplatRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
   '/api-proxy/$': typeof ApiProxySplatRoute
+  '/shortcut-api/add-expense': typeof ShortcutApiAddExpenseRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/trips/$id': typeof AppTripsIdRoute
 }
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
   '/api-proxy/$': typeof ApiProxySplatRoute
+  '/shortcut-api/add-expense': typeof ShortcutApiAddExpenseRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/trips/$id': typeof AppTripsIdRoute
 }
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_app/shortcuts': typeof AppShortcutsRoute
   '/_app/trips': typeof AppTripsRouteWithChildren
   '/api-proxy/$': typeof ApiProxySplatRoute
+  '/shortcut-api/add-expense': typeof ShortcutApiAddExpenseRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/trips/$id': typeof AppTripsIdRoute
 }
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/shortcuts'
     | '/trips'
     | '/api-proxy/$'
+    | '/shortcut-api/add-expense'
     | '/admin/users'
     | '/trips/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/shortcuts'
     | '/trips'
     | '/api-proxy/$'
+    | '/shortcut-api/add-expense'
     | '/admin/users'
     | '/trips/$id'
   id:
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/_app/shortcuts'
     | '/_app/trips'
     | '/api-proxy/$'
+    | '/shortcut-api/add-expense'
     | '/_app/admin/users'
     | '/_app/trips/$id'
   fileRoutesById: FileRoutesById
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ShortcutExpenseRoute: typeof ShortcutExpenseRoute
   ApiProxySplatRoute: typeof ApiProxySplatRoute
+  ShortcutApiAddExpenseRoute: typeof ShortcutApiAddExpenseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shortcut-api/add-expense': {
+      id: '/shortcut-api/add-expense'
+      path: '/shortcut-api/add-expense'
+      fullPath: '/shortcut-api/add-expense'
+      preLoaderRoute: typeof ShortcutApiAddExpenseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api-proxy/$': {
@@ -343,6 +363,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ShortcutExpenseRoute: ShortcutExpenseRoute,
   ApiProxySplatRoute: ApiProxySplatRoute,
+  ShortcutApiAddExpenseRoute: ShortcutApiAddExpenseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

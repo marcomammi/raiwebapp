@@ -125,6 +125,10 @@ function LoginPage() {
             Richiedi accesso
           </button>
         </div>
+
+        <p className="mt-6 text-center text-[11px] text-muted-foreground">
+          Connessione tramite proxy webapp
+        </p>
       </div>
     </div>
   );

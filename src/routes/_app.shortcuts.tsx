@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Copy, Check, KeyRound, Link as LinkIcon } from "lucide-react";
+import { ChevronLeft, Check, KeyRound, Link as LinkIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EXPENSE_CATEGORIES } from "@/lib/types";
@@ -10,9 +10,9 @@ export const Route = createFileRoute("/_app/shortcuts")({
   component: ShortcutsPage,
 });
 
-const API_EXPENSE_URL = "https://raiwebapp.lovable.app/api-proxy/trips/current/expenses";
-const LEGACY_URL_TEMPLATE =
-  "https://raiwebapp.lovable.app/shortcut-expense?amount=[Importo]&category=[Categoria]";
+const QUICK_URL =
+  "https://raiwebapp.lovable.app/shortcut-api/add-expense?amount=[Importo]&category=[Categoria]";
+const ADVANCED_URL = "https://raiwebapp.lovable.app/api-proxy/trips/current/expenses";
 
 function ShortcutsPage() {
   const nav = useNavigate();
@@ -27,7 +27,8 @@ function ShortcutsPage() {
       toast.error("Copia non riuscita");
     }
   };
-  const copyUrl = () => copy("url", API_EXPENSE_URL, "URL API");
+  const copyQuick = () => copy("quick", QUICK_URL, "URL rapido");
+  const copyAdvanced = () => copy("adv", ADVANCED_URL, "URL avanzato");
   const copyToken = () => {
     const { token } = getStoredAuth();
     if (!token) {
@@ -36,7 +37,6 @@ function ShortcutsPage() {
     }
     void copy("token", token, "Token");
   };
-  const copyLegacy = () => copy("legacy", LEGACY_URL_TEMPLATE, "Link");
   return (
     <div className="overflow-x-hidden">
       <header className="px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2 flex items-center gap-2">
@@ -47,15 +47,15 @@ function ShortcutsPage() {
       </header>
       <div className="px-5 pb-3">
         <p className="text-sm text-muted-foreground">
-          Crea un Comando Rapido su iPhone che chiede importo e categoria e chiama il proxy
-          sicuro della webapp in background. La spesa viene aggiunta alla trasferta in corso
-          senza aprire il browser.
+          Crea un Comando Rapido su iPhone che chiede importo e categoria e chiama in background
+          l'endpoint sicuro della webapp. Il tuo token va SOLO nell'header Authorization,
+          mai nell'URL.
         </p>
       </div>
 
       <div className="px-4">
         <div className="rounded-2xl bg-card border border-border p-4">
-          <div className="text-sm font-semibold mb-2">Come creare il Comando Rapido (in background)</div>
+          <div className="text-sm font-semibold mb-2">Metodo consigliato (in background)</div>
           <ol className="list-decimal pl-5 space-y-1.5 text-sm text-muted-foreground">
             <li>Apri l'app Comandi su iPhone e crea un nuovo comando con <span className="font-medium text-foreground">+</span>.</li>
             <li>Aggiungi <span className="font-medium text-foreground">Chiedi input</span> tipo Numero, domanda: "Importo".</li>
@@ -63,22 +63,14 @@ function ShortcutsPage() {
             <li className="break-words">
               Aggiungi <span className="font-medium text-foreground">Ottieni contenuti URL</span> con questi parametri:
               <ul className="mt-1 list-disc pl-5 space-y-1">
-                <li className="break-all [overflow-wrap:anywhere]">URL: <span className="font-mono text-foreground">{API_EXPENSE_URL}</span></li>
-                <li>Metodo: <span className="font-mono text-foreground">POST</span></li>
-                <li className="break-all [overflow-wrap:anywhere]">Headers: <span className="font-mono text-foreground">Authorization: Bearer &lt;TOKEN&gt;</span>, <span className="font-mono text-foreground">Content-Type: application/json</span>, <span className="font-mono text-foreground">Accept: application/json</span></li>
-                <li>
-                  Corpo (JSON):
-                  <pre className="mt-1 rounded-lg bg-muted p-2 text-[11px] font-mono whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground">{`{
-  "category": "Categoria scelta",
-  "amount": Importo,
-  "date": "Data attuale",
-  "paid_by": "employee",
-  "source": "apple_shortcuts"
-}`}</pre>
-                </li>
+                <li className="break-all [overflow-wrap:anywhere]">URL: <span className="font-mono text-foreground">{QUICK_URL}</span></li>
+                <li>Metodo: <span className="font-mono text-foreground">GET</span></li>
+                <li className="break-all [overflow-wrap:anywhere]">Header: <span className="font-mono text-foreground">Authorization: Bearer &lt;TOKEN&gt;</span></li>
+                <li>Nessun corpo. I parametri passano come query string.</li>
               </ul>
             </li>
-            <li>Non aggiungere nessuna azione <span className="font-medium text-foreground">Apri URL</span>: il comando resta in background.</li>
+            <li>Non aggiungere <span className="font-medium text-foreground">Apri URL</span>: resta tutto in background.</li>
+            <li>Il token va SOLO nell'header, mai nell'URL.</li>
             <li>Assegna un nome (es. "Aggiungi spesa") e, se vuoi, aggiungilo alla schermata Home.</li>
           </ol>
         </div>
@@ -87,14 +79,14 @@ function ShortcutsPage() {
       <div className="px-4 mt-3">
         <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
           <div>
-            <div className="text-sm font-semibold mb-1">URL API</div>
-            <div className="rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">{API_EXPENSE_URL}</div>
+            <div className="text-sm font-semibold mb-1">URL rapido</div>
+            <div className="rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">{QUICK_URL}</div>
             <button
-              onClick={copyUrl}
+              onClick={copyQuick}
               className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium active:opacity-90"
             >
-              {copiedKey === "url" ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-              {copiedKey === "url" ? "Copiato" : "Copia URL API"}
+              {copiedKey === "quick" ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+              {copiedKey === "quick" ? "Copiato" : "Copia URL rapido"}
             </button>
           </div>
           <div>
@@ -102,6 +94,7 @@ function ShortcutsPage() {
             <p className="text-[11px] text-muted-foreground mb-2">
               Usa questo token come <span className="font-mono">Bearer</span> nell'header
               <span className="font-mono"> Authorization</span> del Comando Rapido.
+              Non inserirlo mai nell'URL.
             </p>
             <button
               onClick={copyToken}
@@ -132,20 +125,27 @@ function ShortcutsPage() {
 
       <div className="px-4 mt-3">
         <details className="rounded-2xl bg-card border border-border p-4 text-sm">
-          <summary className="cursor-pointer text-muted-foreground">Fallback: apertura webapp (sconsigliato)</summary>
+          <summary className="cursor-pointer text-muted-foreground">Metodo avanzato: POST JSON</summary>
           <p className="mt-2 text-[12px] text-muted-foreground">
-            Se non vuoi usare l'API in background, esiste ancora un link che apre la webapp e
-            aggiunge la spesa. Consigliamo il metodo POST sopra: resta tutto in background.
+            In alternativa puoi usare direttamente il proxy same-origin con metodo POST e corpo JSON.
+            Anche qui il token va SOLO nell'header Authorization.
           </p>
           <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">
-            {LEGACY_URL_TEMPLATE}
+            {ADVANCED_URL}
           </div>
+          <pre className="mt-2 rounded-lg bg-muted p-2 text-[11px] font-mono whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground">{`{
+  "category": "Categoria",
+  "amount": Importo,
+  "date": "YYYY-MM-DD",
+  "paid_by": "employee",
+  "source": "apple_shortcuts"
+}`}</pre>
           <button
-            onClick={copyLegacy}
+            onClick={copyAdvanced}
             className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm active:bg-accent"
           >
-            {copiedKey === "legacy" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copiedKey === "legacy" ? "Copiato" : "Copia link legacy"}
+            {copiedKey === "adv" ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+            {copiedKey === "adv" ? "Copiato" : "Copia URL avanzato"}
           </button>
         </details>
       </div>
