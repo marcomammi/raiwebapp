@@ -32,7 +32,6 @@ import type {
   Expense,
   ExpenseCategory,
   MealMode,
-  MealProfile,
   MealType,
   PaidBy,
   TrainSegment,
@@ -179,7 +178,6 @@ function toProfile(u: AppUser): UserProfile {
     employeeNumber: u.employeeNumber,
     role: u.role,
     status: u.status,
-    mealProfile: u.mealProfile,
     createdAt: u.createdAt,
     default_meal_budget: 46.48,
     name: `${u.firstName} ${u.lastName}`.trim(),
@@ -194,13 +192,6 @@ function normalizeUser(raw: Record<string, unknown>): AppUser {
   const employeeNumber = s("employeeNumber") || s("employee_number") || s("matricola") || "";
   const role: UserRole = (raw.role === "admin" ? "admin" : "user");
   const status: UserStatus = (raw.status === "disabled" ? "disabled" : "active");
-  // Il backend può esporre `mealProfile: "standard" | "enhanced"` oppure
-  // il boolean `enhancedMealProfile`. Normalizziamo entrambe le forme.
-  const mp = raw.mealProfile ?? raw.meal_profile;
-  let mealProfile: MealProfile = "standard";
-  if (typeof mp === "string" && mp === "enhanced") mealProfile = "enhanced";
-  else if (typeof raw.enhancedMealProfile === "boolean" && raw.enhancedMealProfile) mealProfile = "enhanced";
-  else if (typeof raw.enhanced_meal_profile === "boolean" && raw.enhanced_meal_profile) mealProfile = "enhanced";
   return {
     id: s("id") || uid(),
     email: s("email"),
@@ -209,7 +200,6 @@ function normalizeUser(raw: Record<string, unknown>): AppUser {
     employeeNumber,
     role,
     status,
-    mealProfile,
     createdAt: s("createdAt") || s("created_at") || new Date().toISOString(),
   };
 }
@@ -273,7 +263,6 @@ export interface UserPayload {
   employeeNumber: string;
   role: UserRole;
   status: UserStatus;
-  mealProfile: MealProfile;
 }
 
 function assertAllowedEmail(email: string) {
@@ -424,17 +413,6 @@ export async function parseTravelDocument(file: File): Promise<ParsedTravelDocum
   }
   const data = (await res.json()) as ParsedTravelDocument;
   return { segments: Array.isArray(data?.segments) ? data.segments : [], raw: data };
-}
-
-// ---------- update own profile ----------
-export async function updateMyProfile(payload: { mealProfile?: MealProfile }): Promise<UserProfile> {
-  const raw = await apiFetch<Record<string, unknown>>("/me", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-  const profile = toProfile(normalizeUser(raw));
-  if (isBrowser()) localStorage.setItem(LS_USER, JSON.stringify(profile));
-  return profile;
 }
 
 export async function getExpensesForTrip(tripId: string): Promise<Expense[]> {
