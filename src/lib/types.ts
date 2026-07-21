@@ -56,6 +56,8 @@ export interface Trip {
   id: string;
   title: string;
   destination?: string;
+  city?: string;
+  travel_sheet_number?: string;
   start_date: string;
   end_date: string;
   start_time?: string;
