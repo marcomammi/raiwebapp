@@ -109,7 +109,15 @@ function TripDetail() {
         <h1 className="text-3xl font-semibold tracking-tight truncate">{trip.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           {formatDate(trip.start_date)} – {formatDate(trip.end_date)}
+          {trip.city ? ` · ${trip.city}` : ""}
         </p>
+
+        <button
+          onClick={() => setSettingsSheet(true)}
+          className="mt-4 w-full h-12 rounded-xl border border-border bg-card text-sm font-medium flex items-center justify-center gap-2 active:bg-accent"
+        >
+          <Settings2 className="h-4 w-4" /> Modifica impostazioni
+        </button>
 
         {trip.status === "closed" && (
           <div className="mt-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-3 py-2 text-xs">
