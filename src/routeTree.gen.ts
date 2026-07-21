@@ -19,6 +19,7 @@ import { Route as AppNewExpenseRouteImport } from './routes/_app.new-expense'
 import { Route as AppMealsRouteImport } from './routes/_app.meals'
 import { Route as AppExpensesRouteImport } from './routes/_app.expenses'
 import { Route as AppTripsIdRouteImport } from './routes/_app.trips.$id'
+import { Route as AppAdminUsersRouteImport } from './routes/_app.admin.users'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -69,6 +70,11 @@ const AppTripsIdRoute = AppTripsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppTripsRoute,
 } as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AppProfileRoute
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
+  '/admin/users': typeof AppAdminUsersRoute
   '/trips/$id': typeof AppTripsIdRoute
 }
 export interface FileRoutesByTo {
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AppProfileRoute
   '/shortcuts': typeof AppShortcutsRoute
   '/trips': typeof AppTripsRouteWithChildren
+  '/admin/users': typeof AppAdminUsersRoute
   '/trips/$id': typeof AppTripsIdRoute
 }
 export interface FileRoutesById {
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_app/profile': typeof AppProfileRoute
   '/_app/shortcuts': typeof AppShortcutsRoute
   '/_app/trips': typeof AppTripsRouteWithChildren
+  '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/trips/$id': typeof AppTripsIdRoute
 }
 export interface FileRouteTypes {
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/shortcuts'
     | '/trips'
+    | '/admin/users'
     | '/trips/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/shortcuts'
     | '/trips'
+    | '/admin/users'
     | '/trips/$id'
   id:
     | '__root__'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_app/profile'
     | '/_app/shortcuts'
     | '/_app/trips'
+    | '/_app/admin/users'
     | '/_app/trips/$id'
   fileRoutesById: FileRoutesById
 }
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTripsIdRouteImport
       parentRoute: typeof AppTripsRoute
     }
+    '/_app/admin/users': {
+      id: '/_app/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -242,6 +261,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppShortcutsRoute: typeof AppShortcutsRoute
   AppTripsRoute: typeof AppTripsRouteWithChildren
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -251,6 +271,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppShortcutsRoute: AppShortcutsRoute,
   AppTripsRoute: AppTripsRouteWithChildren,
+  AppAdminUsersRoute: AppAdminUsersRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
