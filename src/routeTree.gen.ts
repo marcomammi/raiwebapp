@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShortcutExpenseRouteImport } from './routes/shortcut-expense'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,6 +23,11 @@ import { Route as AppExpensesRouteImport } from './routes/_app.expenses'
 import { Route as AppTripsIdRouteImport } from './routes/_app.trips.$id'
 import { Route as AppAdminUsersRouteImport } from './routes/_app.admin.users'
 
+const ShortcutExpenseRoute = ShortcutExpenseRouteImport.update({
+  id: '/shortcut-expense',
+  path: '/shortcut-expense',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -85,6 +91,7 @@ const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/shortcut-expense': typeof ShortcutExpenseRoute
   '/expenses': typeof AppExpensesRoute
   '/meals': typeof AppMealsRoute
   '/new-expense': typeof AppNewExpenseRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/shortcut-expense': typeof ShortcutExpenseRoute
   '/expenses': typeof AppExpensesRoute
   '/meals': typeof AppMealsRoute
   '/new-expense': typeof AppNewExpenseRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/shortcut-expense': typeof ShortcutExpenseRoute
   '/_app/expenses': typeof AppExpensesRoute
   '/_app/meals': typeof AppMealsRoute
   '/_app/new-expense': typeof AppNewExpenseRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/shortcut-expense'
     | '/expenses'
     | '/meals'
     | '/new-expense'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/shortcut-expense'
     | '/expenses'
     | '/meals'
     | '/new-expense'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/shortcut-expense'
     | '/_app/expenses'
     | '/_app/meals'
     | '/_app/new-expense'
@@ -170,10 +182,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ShortcutExpenseRoute: typeof ShortcutExpenseRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shortcut-expense': {
+      id: '/shortcut-expense'
+      path: '/shortcut-expense'
+      fullPath: '/shortcut-expense'
+      preLoaderRoute: typeof ShortcutExpenseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ShortcutExpenseRoute: ShortcutExpenseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
