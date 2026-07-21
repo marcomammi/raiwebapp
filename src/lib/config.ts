@@ -9,15 +9,20 @@ export const API_BASE_URL: string =
 
 // Only email addresses on this domain are accepted for login, admin-created
 // users and access requests.
-export const ALLOWED_EMAIL_DOMAIN = "company.test";
+export const ALLOWED_EMAIL_DOMAIN = "rai.it";
 
 // Self-service registration is disabled: users request access and an admin
 // creates their account.
 export const SELF_REGISTRATION_ENABLED = false;
 
 // Development-only fallback for trips/expenses when the backend is not
-// reachable in preview. Never applies to authentication.
-export const DEV_MOCK_TRIPS = true;
+// reachable locally. Disabled by default: enable explicitly in dev via
+// `VITE_DEV_MOCK_TRIPS=true`. Never applies to authentication and never
+// activates in preview/production unless the flag is set.
+export const DEV_MOCK_TRIPS: boolean =
+  (typeof import.meta !== "undefined" &&
+    (import.meta as { env?: Record<string, string> }).env?.VITE_DEV_MOCK_TRIPS === "true") ||
+  false;
 
 export function isAllowedEmail(email: string): boolean {
   const at = email.lastIndexOf("@");
