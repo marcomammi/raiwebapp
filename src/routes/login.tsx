@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Accedi — Trip Companion" },
+      { title: "Accedi — Gestione trasferte" },
       { name: "description", content: "Accedi per gestire le tue trasferte e spese." },
       { name: "robots", content: "noindex" },
     ],
@@ -65,7 +65,7 @@ function LoginPage() {
           <div className="mx-auto mb-5 h-16 w-16 rounded-3xl bg-primary text-primary-foreground grid place-items-center text-2xl font-semibold shadow-lg">
             T
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Trip Companion</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Gestione trasferte</h1>
           <p className="mt-1 text-sm text-muted-foreground">Accedi per continuare</p>
         </div>
 
