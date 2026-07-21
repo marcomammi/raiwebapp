@@ -188,19 +188,42 @@ function NewExpensePage() {
           />
         </Field>
 
-        <Field label="Ricevuta">
-          <label className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-3 cursor-pointer">
-            <input type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
-            {receipt ? (
-              <img src={receipt} alt="Ricevuta" className="h-14 w-14 object-cover rounded-lg" />
-            ) : (
-              <div className="h-14 w-14 rounded-lg bg-muted grid place-items-center text-xl">📷</div>
-            )}
-            <span className="text-sm text-muted-foreground">
-              {receipt ? "Cambia foto" : "Aggiungi foto o ricevuta"}
-            </span>
-          </label>
-        </Field>
+        {isMeal && (
+          <Field label="Pasto a forfait">
+            <button
+              type="button"
+              onClick={() => setForfait((v) => !v)}
+              aria-pressed={forfait}
+              className={cn(
+                "w-full h-12 rounded-xl border px-4 flex items-center justify-between",
+                forfait ? "bg-primary/10 border-primary/40" : "bg-card border-input",
+              )}
+            >
+              <span className="text-sm">
+                {forfait ? "Attivo — nessuna ricevuta richiesta" : "Disattivato — spesa con ricevuta"}
+              </span>
+              <span className={cn("relative h-7 w-12 rounded-full transition", forfait ? "bg-primary" : "bg-muted")}>
+                <span className={cn("absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition", forfait ? "left-[22px]" : "left-0.5")} />
+              </span>
+            </button>
+          </Field>
+        )}
+
+        {!forfait && (
+          <Field label="Ricevuta">
+            <label className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-3 cursor-pointer">
+              <input type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
+              {receipt ? (
+                <img src={receipt} alt="Ricevuta" className="h-14 w-14 object-cover rounded-lg" />
+              ) : (
+                <div className="h-14 w-14 rounded-lg bg-muted grid place-items-center text-xl">📷</div>
+              )}
+              <span className="text-sm text-muted-foreground">
+                {receipt ? "Cambia foto" : "Aggiungi foto o ricevuta"}
+              </span>
+            </label>
+          </Field>
+        )}
       </form>
     </div>
   );

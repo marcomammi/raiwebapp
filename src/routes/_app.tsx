@@ -54,7 +54,7 @@ function AppShell() {
   }
 
   const path = location.pathname;
-  const hideChrome = path.startsWith("/new-expense");
+  const hideChrome = path.startsWith("/new-expense") || path.startsWith("/new-trip");
 
   return (
     <SelectedTripProvider>
