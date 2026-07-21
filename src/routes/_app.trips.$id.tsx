@@ -2,13 +2,22 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MoreHorizontal, FileText, Download, Mail, X } from "lucide-react";
-import { getTrip, getExpensesForTrip, deleteExpense, generatePdf, emailPdf, updateMealBudget, type GeneratedPdf } from "@/lib/api";
+import { getTrip, getExpensesForTrip, generatePdf, emailPdf, updateMealBudget, type GeneratedPdf } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { useAuth } from "@/lib/auth";
+import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
+import {
+  countsInTotal,
+  entitlementBudget,
+  getEntitlements,
+  sumCountable,
+  totalMealBudget,
+} from "@/lib/trip-utils";
+import type { Trip } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/trips/$id")({
   head: () => ({ meta: [{ title: "Dettaglio trasferta" }, { name: "robots", content: "noindex" }] }),
@@ -30,21 +39,18 @@ function TripDetail() {
 
   const { data: trip } = useQuery({ queryKey: ["trip", id], queryFn: () => getTrip(id) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", id], queryFn: () => getExpensesForTrip(id) });
+  const [editing, setEditing] = useState<Expense | null>(null);
 
   const stats = useMemo(() => {
-    const total = expenses.reduce((s, e) => s + e.amount, 0);
+    const clientTotal = sumCountable(expenses);
+    const total = typeof trip?.spent_total === "number" ? trip.spent_total : clientTotal;
     const meals = expenses.filter((e) => MEAL_CATEGORIES.includes(e.category));
-    const mealTotal = meals.reduce((s, e) => s + e.amount, 0);
-    const days = new Set(meals.map((e) => e.date)).size || 1;
-    const snap = trip?.meal_rules_snapshot;
-    const dailyBudget =
-      snap?.daily_budget ??
-      (snap && (snap.lunch_budget || snap.dinner_budget)
-        ? (snap.lunch_budget ?? 0) + (snap.dinner_budget ?? 0)
-        : trip?.meal_budget_daily ?? 0);
-    const budgetTotal = dailyBudget * days;
+    const mealTotal = sumCountable(meals);
+    const entitlements = getEntitlements(trip);
+    const budgetTotal = totalMealBudget(trip);
+    const days = entitlements.length || new Set(meals.map((e) => e.date)).size || 1;
     const diff = budgetTotal - mealTotal;
-    return { total, mealTotal, budgetTotal, diff, days, dailyBudget };
+    return { total, mealTotal, budgetTotal, diff, days, hasEntitlements: entitlements.length > 0 };
   }, [expenses, trip]);
 
   const hasKmData = useMemo(
@@ -58,7 +64,9 @@ function TripDetail() {
     return <div className="px-5 py-10 text-sm text-muted-foreground">Caricamento…</div>;
   }
 
-  const balance = trip.advance != null ? trip.advance - stats.total : null;
+  const balance = typeof trip.advance_balance === "number"
+    ? trip.advance_balance
+    : trip.advance != null ? trip.advance - stats.total : null;
 
   return (
     <div>
@@ -103,10 +111,13 @@ function TripDetail() {
 
       <div className="px-4 mt-5 grid grid-cols-2 gap-2">
         <StatCard label="Totale spese" value={eur(stats.total)} accent />
-        <StatCard label={`Budget pasti (${stats.days}g)`} value={eur(stats.budgetTotal)} />
+        <StatCard
+          label={stats.hasEntitlements ? `Budget pasti (${stats.days}g)` : "Budget pasti"}
+          value={stats.hasEntitlements ? eur(stats.budgetTotal) : "—"}
+        />
         <StatCard
           label={stats.diff >= 0 ? "Sotto budget" : "Sopra budget"}
-          value={eur(Math.abs(stats.diff))}
+          value={stats.hasEntitlements ? eur(Math.abs(stats.diff)) : "—"}
           tone={stats.diff >= 0 ? "positive" : "negative"}
         />
         {trip.advance != null && balance != null && (
@@ -136,14 +147,17 @@ function TripDetail() {
       </div>
 
       <div className="px-4 mt-4">
-        {tab === "all" && <ExpensesList expenses={expenses} tripId={id} />}
-        {tab === "meals" && <MealsList expenses={expenses} budget={trip.meal_budget_daily} />}
+        {tab === "all" && <ExpensesList expenses={expenses} tripId={id} onEdit={setEditing} />}
+        {tab === "meals" && <MealsList expenses={expenses} trip={trip} onEdit={setEditing} />}
         {tab === "docs" && <DocsList expenses={expenses} onGenerate={openPdf} hasKmData={hasKmData} />}
         {tab === "summary" && <SummaryView expenses={expenses} advance={trip.advance} onGenerate={openPdf} hasKmData={hasKmData} />}
       </div>
 
       {pdfSheet && (
         <PdfSheet tripId={id} hasKmData={hasKmData} onClose={() => setPdfSheet(false)} />
+      )}
+      {editing && (
+        <ExpenseEditSheet expense={editing} trip={trip} onClose={() => setEditing(null)} />
       )}
     </div>
   );
