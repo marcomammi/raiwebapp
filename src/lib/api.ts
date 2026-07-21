@@ -91,11 +91,7 @@ async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  // Costruzione URL robusta: API_BASE_URL è già privo di slash finali,
-  // il path deve iniziare con "/". Evita "//" o path senza slash che
-  // provocano redirect Apache (es. "/api" -> "/api/") su alcune rotte.
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE_URL}${normalizedPath}`;
+  const url = buildApiUrl(path);
   let res: Response;
   try {
     res = await fetch(url, {
@@ -108,7 +104,7 @@ async function apiFetch<T>(
       },
     });
   } catch {
-    throw new ApiError("Servizio non raggiungibile", 0, "network");
+    throw new ApiError("Servizio non raggiungibile tramite proxy. Riprova tra poco.", 0, "network");
   }
   const text = await res.text();
   const body = text ? safeJson(text) : null;
@@ -127,6 +123,12 @@ async function apiFetch<T>(
     throw new ApiError(msg, res.status);
   }
   return body as T;
+}
+
+function buildApiUrl(path: string): string {
+  const normalizedBase = API_BASE_URL.replace(/\/+$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
 }
 
 function safeJson(text: string): unknown {
@@ -501,7 +503,7 @@ export async function parseTravelDocuments(
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/travel-documents/parse`, {
+    res = await fetch(buildApiUrl("/travel-documents/parse"), {
       method: "POST",
       headers: { ...authHeaders() },
       body: form,
@@ -684,12 +686,12 @@ export async function updateMealBudget(tripId: string, budget: number): Promise<
 export async function downloadTripPdf(tripId: string): Promise<{ filename: string }> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/trips/${encodeURIComponent(tripId)}/pdf`, {
+    res = await fetch(buildApiUrl(`/trips/${encodeURIComponent(tripId)}/pdf`), {
       method: "GET",
       headers: { ...authHeaders(), Accept: "application/pdf" },
     });
   } catch {
-    throw new ApiError("Servizio non raggiungibile", 0, "network");
+    throw new ApiError("Servizio non raggiungibile tramite proxy. Riprova tra poco.", 0, "network");
   }
   if (!res.ok) throw new ApiError("Impossibile scaricare la distinta", res.status);
   const blob = await res.blob();

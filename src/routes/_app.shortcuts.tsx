@@ -4,14 +4,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { getStoredAuth } from "@/lib/api";
-import { API_BASE_URL } from "@/lib/config";
 
 export const Route = createFileRoute("/_app/shortcuts")({
   head: () => ({ meta: [{ title: "Inserimento rapido" }, { name: "robots", content: "noindex" }] }),
   component: ShortcutsPage,
 });
 
-const API_EXPENSE_URL = `${API_BASE_URL}/trips/current/expenses`;
+const API_EXPENSE_URL = "https://raiwebapp.lovable.app/api-proxy/trips/current/expenses";
 const LEGACY_URL_TEMPLATE =
   "https://raiwebapp.lovable.app/shortcut-expense?amount=[Importo]&category=[Categoria]";
 
@@ -48,8 +47,8 @@ function ShortcutsPage() {
       </header>
       <div className="px-5 pb-3">
         <p className="text-sm text-muted-foreground">
-          Crea un Comando Rapido su iPhone che chiede importo e categoria e chiama l'API
-          direttamente in background. La spesa viene aggiunta alla trasferta in corso
+          Crea un Comando Rapido su iPhone che chiede importo e categoria e chiama il proxy
+          sicuro della webapp in background. La spesa viene aggiunta alla trasferta in corso
           senza aprire il browser.
         </p>
       </div>
