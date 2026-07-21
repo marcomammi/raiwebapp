@@ -119,13 +119,13 @@ export function TripEditSheet({ trip, onClose }: Props) {
             />
           </Field>
 
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             <Field label="Data inizio">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+                className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base"
               />
             </Field>
             <Field label="Data fine">
@@ -133,18 +133,18 @@ export function TripEditSheet({ trip, onClose }: Props) {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+                className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base"
               />
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             <Field label="Ora inizio">
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+                className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base"
               />
             </Field>
             <Field label="Ora fine">
@@ -152,7 +152,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+                className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base"
               />
             </Field>
           </div>
