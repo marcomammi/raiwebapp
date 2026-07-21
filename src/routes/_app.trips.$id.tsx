@@ -362,7 +362,7 @@ function DocsList({ expenses, onGenerate, hasKmData }: { expenses: Expense[]; on
 }
 
 function SummaryView({ expenses, advance, onGenerate, hasKmData }: { expenses: Expense[]; advance?: number; onGenerate: () => void; hasKmData: boolean }) {
-  const sumBy = (cats: string[]) => expenses.filter((e) => cats.includes(e.category)).reduce((s, e) => s + e.amount, 0);
+  const sumBy = (cats: string[]) => sumCountable(expenses.filter((e) => cats.includes(e.category)));
   const rows = [
     { label: "Pasti", value: sumBy(MEAL_CATEGORIES) },
     { label: "Pernottamento", value: sumBy(["Hotel", "City tax"]) },
@@ -370,7 +370,7 @@ function SummaryView({ expenses, advance, onGenerate, hasKmData }: { expenses: E
     { label: "Carburante", value: sumBy(["Carburante"]) },
     { label: "Altro", value: sumBy(["Altro"]) },
   ];
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const total = sumCountable(expenses);
   const balance = advance != null ? advance - total : null;
   return (
     <div className="space-y-3">
