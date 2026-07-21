@@ -3,9 +3,12 @@
 
 // Base URL of the real backend API. Override with VITE_API_BASE_URL when
 // running against a different environment.
-export const API_BASE_URL: string =
+const RAW_API_BASE_URL: string =
   (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL) ||
   "https://rai.marcomammi.com/api";
+
+// Normalizza rimuovendo eventuali slash finali: gli endpoint iniziano sempre con "/".
+export const API_BASE_URL: string = RAW_API_BASE_URL.replace(/\/+$/, "");
 
 // Only email addresses on this domain are accepted for login, admin-created
 // users and access requests.
