@@ -6,9 +6,11 @@ import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { TripHeader } from "@/components/trip-header";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
+import { PdfSheet } from "@/components/pdf-sheet";
 import { countsInTotal, sumCountable } from "@/lib/trip-utils";
 import type { Expense } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { FileText } from "lucide-react";
 
 export const Route = createFileRoute("/_app/expenses")({
   head: () => ({ meta: [{ title: "Spese" }, { name: "robots", content: "noindex" }] }),
@@ -23,6 +25,7 @@ function ExpensesPage() {
     enabled: !!selectedTripId,
   });
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   const grouped = useMemo(() => {
     const m = new Map<string, typeof expenses>();
@@ -35,13 +38,29 @@ function ExpensesPage() {
   }, [expenses]);
 
   const total = sumCountable(expenses);
+  const hasKmData = useMemo(
+    () => expenses.some((e) => e.category === "Carburante" || /\bkm\b/i.test(e.note ?? "")),
+    [expenses],
+  );
 
   return (
     <div>
-      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Spese trasferta</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{eur(total)}</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">{expenses.length} voci registrate</p>
+      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Spese trasferta</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{eur(total)}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{expenses.length} voci registrate</p>
+        </div>
+        {selectedTripId && (
+          <button
+            type="button"
+            onClick={() => setPdfOpen(true)}
+            className="mt-2 h-10 px-3 rounded-full bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1 active:scale-95 shrink-0"
+            aria-label="Distinta PDF"
+          >
+            <FileText className="h-4 w-4" /> Distinta
+          </button>
+        )}
       </header>
 
       <TripHeader label="Trasferta selezionata" />
@@ -93,6 +112,9 @@ function ExpensesPage() {
       </div>
       {editing && (
         <ExpenseEditSheet expense={editing} trip={selectedTrip} onClose={() => setEditing(null)} />
+      )}
+      {pdfOpen && selectedTripId && (
+        <PdfSheet tripId={selectedTripId} hasKmData={hasKmData} onClose={() => setPdfOpen(false)} />
       )}
     </div>
   );

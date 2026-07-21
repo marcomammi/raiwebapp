@@ -342,6 +342,22 @@ export async function getTrips(): Promise<Trip[]> {
   return [...raw].map(normalizeTrip).sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
 }
 
+export async function getCurrentTrip(): Promise<Trip | null> {
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(120);
+    const t = read<Trip[]>(LS_TRIPS, []).find((x) => x.status === "in_progress");
+    return t ?? null;
+  }
+  try {
+    const t = await apiFetch<Trip>("/trips/current");
+    return normalizeTrip(t);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 // Il backend può usare `closed`, `completed`, `archived` come stati "passati":
 // li normalizziamo tutti su `closed` per la lista "Trasferte passate".
 function normalizeTrip(t: Trip): Trip {
@@ -398,6 +414,8 @@ export interface TravelDocumentUpload {
   role: TravelDocumentRole;
   filename?: string;
   client_id?: string;
+  /** Testo estratto lato client via OCR/pdfjs; se presente il file può essere omesso. */
+  client_text?: string;
 }
 
 /**
@@ -419,8 +437,21 @@ export async function parseTravelDocuments(
     filename: u.filename ?? u.file.name,
     role: u.role,
     client_id: u.client_id,
+    has_client_text: !!(u.client_text && u.client_text.length),
   }));
-  uploads.forEach((u) => form.append("files[]", u.file, u.filename ?? u.file.name));
+  uploads.forEach((u) => {
+    const name = u.filename ?? u.file.name;
+    // Il backend accetta client_texts[] + client_filenames[]: allega il file
+    // solo quando l'OCR locale non ha prodotto testo utile.
+    if (u.client_text && u.client_text.length) {
+      form.append("client_texts[]", u.client_text);
+      form.append("client_filenames[]", name);
+    } else {
+      form.append("files[]", u.file, name);
+      form.append("client_texts[]", "");
+      form.append("client_filenames[]", name);
+    }
+  });
   form.append("metadata", JSON.stringify(metadata));
 
   let res: Response;
@@ -475,6 +506,20 @@ export async function getExpensesForTrip(tripId: string): Promise<Expense[]> {
   return [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
+export async function getCurrentTripExpenses(): Promise<Expense[]> {
+  if (DEV_MOCK_TRIPS) {
+    ensureSeed();
+    await delay(120);
+    const t = read<Trip[]>(LS_TRIPS, []).find((x) => x.status === "in_progress");
+    if (!t) return [];
+    return read<Expense[]>(LS_EXPENSES, [])
+      .filter((e) => e.trip_id === t.id)
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+  const raw = await apiFetch<Expense[]>("/trips/current/expenses");
+  return [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
 export async function getAllExpenses(): Promise<Expense[]> {
   if (DEV_MOCK_TRIPS) {
     ensureSeed();
@@ -513,6 +558,25 @@ export async function createExpense(tripId: string, payload: ExpensePayload): Pr
     return newExp;
   }
   return apiFetch<Expense>(`/trips/${encodeURIComponent(tripId)}/expenses`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Crea una spesa sulla trasferta in corso senza doverla scegliere.
+ * Usato dall'integrazione Apple Shortcuts e da flussi rapidi.
+ * Endpoint: POST /trips/current/expenses.
+ */
+export async function createCurrentTripExpense(
+  payload: ExpensePayload,
+): Promise<Expense> {
+  if (DEV_MOCK_TRIPS) {
+    const t = read<Trip[]>(LS_TRIPS, []).find((x) => x.status === "in_progress");
+    if (!t) throw new Error("Nessuna trasferta in corso");
+    return createExpense(t.id, payload);
+  }
+  return apiFetch<Expense>("/trips/current/expenses", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -568,51 +632,45 @@ export async function updateMealBudget(tripId: string, budget: number): Promise<
 }
 
 // ---------- pdf ----------
-export interface GeneratedPdf {
-  url: string;
-  includesKmSchedule: boolean;
-  filename?: string;
+/**
+ * Scarica la distinta PDF della trasferta come blob e la salva sul
+ * dispositivo. Endpoint: GET /trips/:id/pdf.
+ */
+export async function downloadTripPdf(tripId: string): Promise<{ filename: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/trips/${encodeURIComponent(tripId)}/pdf`, {
+      method: "GET",
+      headers: { ...authHeaders(), Accept: "application/pdf" },
+    });
+  } catch {
+    throw new ApiError("Servizio non raggiungibile", 0, "network");
+  }
+  if (!res.ok) throw new ApiError("Impossibile scaricare la distinta", res.status);
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition") ?? "";
+  const m = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(cd);
+  const filename = decodeURIComponent(m?.[1]?.replace(/"$/, "") ?? `distinta-${tripId}.pdf`);
+  if (isBrowser()) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5_000);
+  }
+  return { filename };
 }
 
-export async function generatePdf(tripId: string): Promise<GeneratedPdf> {
-  // Real: POST /api/trips/:id/generate-pdf → { url, includesKmSchedule }
-  try {
-    const data = await apiFetch<{ url: string; includes_km_schedule?: boolean; filename?: string }>(
-      `/trips/${encodeURIComponent(tripId)}/generate-pdf`,
-      { method: "POST" },
-    );
-    return {
-      url: data.url,
-      includesKmSchedule: !!data.includes_km_schedule,
-      filename: data.filename,
-    };
-  } catch (err) {
-    if (DEV_MOCK_TRIPS && err instanceof ApiError && err.code === "network") {
-      await delay(400);
-      const expenses = read<Expense[]>(LS_EXPENSES, []).filter((e) => e.trip_id === tripId);
-      const includesKmSchedule = expenses.some((e) => e.category === "Carburante" || /\bkm\b/i.test(e.note ?? ""));
-      return {
-        url: `${API_BASE_URL}/trips/${tripId}/report.pdf`,
-        includesKmSchedule,
-        filename: `distinta-${tripId}.pdf`,
-      };
-    }
-    throw err;
-  }
-}
-
-export async function emailPdf(tripId: string): Promise<{ sent: boolean }> {
-  // Real: POST /api/trips/:id/email-pdf → { sent: true }
-  try {
-    await apiFetch<void>(`/trips/${encodeURIComponent(tripId)}/email-pdf`, { method: "POST" });
-    return { sent: true };
-  } catch (err) {
-    if (DEV_MOCK_TRIPS && err instanceof ApiError && err.code === "network") {
-      await delay(400);
-      return { sent: true };
-    }
-    throw err;
-  }
+/** Invia la distinta PDF alla mail dell'utente loggato. POST /trips/:id/pdf {action:"email"} */
+export async function emailTripPdf(tripId: string): Promise<{ sent: boolean }> {
+  await apiFetch<unknown>(`/trips/${encodeURIComponent(tripId)}/pdf`, {
+    method: "POST",
+    body: JSON.stringify({ action: "email" }),
+  });
+  return { sent: true };
 }
 
 // ---------- shortcut helper ----------
