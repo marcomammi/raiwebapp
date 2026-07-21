@@ -109,7 +109,7 @@ function TripDetail() {
         <h1 className="text-3xl font-semibold tracking-tight truncate">{trip.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           {formatDate(trip.start_date)} – {formatDate(trip.end_date)}
-          {trip.city ? ` · ${trip.city}` : ""}
+          {(trip.city ?? trip.destination) ? ` · ${trip.city ?? trip.destination}` : ""}
         </p>
 
         <button
