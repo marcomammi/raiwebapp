@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Link } from "@tanstack/react-router";
 import { LogOut, Zap, ChevronRight, ShieldCheck } from "lucide-react";
-import { eur } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => ({ meta: [{ title: "Profilo" }, { name: "robots", content: "noindex" }] }),
@@ -34,7 +33,6 @@ function ProfilePage() {
 
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
           <Row label="Matricola" value={user.matricola} />
-          <Row label="Budget pasti predefinito" value={eur(user.default_meal_budget)} />
         </div>
 
         <Link
