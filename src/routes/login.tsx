@@ -36,9 +36,11 @@ function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "network" || err.status === 0) {
-          toast.error("Servizio non raggiungibile. Controlla la connessione o riprova.");
-        } else if (err.status === 401 || err.status === 403) {
+          toast.error("Servizio non raggiungibile tramite proxy. Riprova tra poco.");
+        } else if (err.status === 401) {
           toast.error("Credenziali non valide.");
+        } else if (err.status === 403) {
+          toast.error("Accesso negato.");
         } else {
           toast.error(err.message || "Errore del server. Riprova più tardi.");
         }

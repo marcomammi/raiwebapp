@@ -1,11 +1,12 @@
 // Runtime configuration for the companion app.
 // The backend on the corporate site is the single source of truth.
 
-// Base URL of the real backend API. Override with VITE_API_BASE_URL when
-// running against a different environment.
+// Base URL used by the frontend. By default the app calls its same-origin
+// proxy, which forwards server-side to the real backend. Override with
+// VITE_API_BASE_URL only when intentionally testing another environment.
 const RAW_API_BASE_URL: string =
   (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL) ||
-  "https://rai.marcomammi.com/api";
+  "/api-proxy";
 
 // Normalizza rimuovendo eventuali slash finali: gli endpoint iniziano sempre con "/".
 export const API_BASE_URL: string = RAW_API_BASE_URL.replace(/\/+$/, "");
