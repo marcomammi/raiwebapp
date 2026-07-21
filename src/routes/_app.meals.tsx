@@ -13,7 +13,6 @@ import {
   entitlementBudget,
   getEntitlements,
   sumCountable,
-  totalMealBudget,
 } from "@/lib/trip-utils";
 
 export const Route = createFileRoute("/_app/meals")({
@@ -32,6 +31,11 @@ function MealsPage() {
   const snapshot = selectedTrip?.meal_rules_snapshot;
   const entitlements = getEntitlements(selectedTrip);
   const hasEntitlements = entitlements.length > 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const elapsedEntitlements = useMemo(
+    () => entitlements.filter((e) => e.date <= today),
+    [entitlements, today],
+  );
   const cityAdjustment =
     selectedTrip?.meal_city_adjustment_applied ??
     snapshot?.city_adjustment_applied ??
@@ -68,10 +72,14 @@ function MealsPage() {
       });
   }, [meals, entitlements]);
 
-  const totalBudget = hasEntitlements ? totalMealBudget(selectedTrip) : 0;
+  const totalBudget = hasEntitlements
+    ? elapsedEntitlements.reduce((s, e) => s + entitlementBudget(e), 0)
+    : 0;
   const totalSpent = sumCountable(meals);
   const diff = totalBudget - totalSpent;
-  const daysCount = hasEntitlements ? entitlements.length : rows.length;
+  const daysCount = hasEntitlements
+    ? elapsedEntitlements.length
+    : rows.filter((r) => r.date <= today).length;
   const avg = daysCount > 0 ? totalSpent / daysCount : 0;
 
   return (
@@ -83,7 +91,7 @@ function MealsPage() {
         </h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {hasEntitlements
-            ? `Budget pasti totale ${eur(totalBudget)} · ${entitlements.length} giorni`
+            ? `Budget maturato ${eur(totalBudget)} · ${elapsedEntitlements.length}/${entitlements.length} giorni`
             : "Regole pasti non disponibili"}
         </p>
         {hasEntitlements && cityAdjustment && (
