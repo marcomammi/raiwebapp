@@ -88,15 +88,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Gestione Trasferte" },
       { name: "twitter:description", content: "App mobile per gestire spese, pasti e trasferte in mobilità." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42d1a4bf-42fa-430c-ab47-d7d183f099cf/id-preview-b91f6228--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784644864594.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42d1a4bf-42fa-430c-ab47-d7d183f099cf/id-preview-b91f6228--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784644864594.png" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7482ba8f-86a1-433b-aa6a-f4cf4610b40f/id-preview-5d72f786--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784645667878.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7482ba8f-86a1-433b-aa6a-f4cf4610b40f/id-preview-5d72f786--1236a626-5a95-43d5-bbd9-f642f9cc0f18.lovable.app-1784645667878.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,
