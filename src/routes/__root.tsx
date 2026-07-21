@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "sonner";
+import { StandaloneNavGuard } from "@/lib/standalone-nav";
 
 function NotFoundComponent() {
   return (
@@ -132,6 +133,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <StandaloneNavGuard />
         <Outlet />
         <Toaster position="top-center" richColors />
       </AuthProvider>
