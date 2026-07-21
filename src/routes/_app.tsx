@@ -4,6 +4,7 @@ import { Briefcase, Receipt, UtensilsCrossed, User, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { SelectedTripProvider } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
+import { SwipeTabNavigation } from "@/components/swipe-tab-navigation";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -59,6 +60,7 @@ function AppShell() {
   return (
     <SelectedTripProvider>
     <div className="min-h-[100dvh] bg-background text-foreground">
+      <SwipeTabNavigation />
       <main className={cn("mx-auto w-full max-w-md", hideChrome ? "" : "pb-32")}>
         <Outlet />
       </main>

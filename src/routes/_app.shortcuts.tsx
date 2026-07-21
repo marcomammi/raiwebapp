@@ -1,8 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, Copy, Check, KeyRound, Link as LinkIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { categoryIcon } from "@/lib/format";
 import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { getStoredAuth } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
@@ -11,14 +10,6 @@ export const Route = createFileRoute("/_app/shortcuts")({
   head: () => ({ meta: [{ title: "Inserimento rapido" }, { name: "robots", content: "noindex" }] }),
   component: ShortcutsPage,
 });
-
-const ACTIONS: { key: string; category: string; label: string }[] = [
-  { key: "lunch", category: "Pranzo", label: "Aggiungi pranzo" },
-  { key: "dinner", category: "Cena", label: "Aggiungi cena" },
-  { key: "taxi", category: "Taxi", label: "Aggiungi taxi" },
-  { key: "fuel", category: "Carburante", label: "Aggiungi carburante" },
-  { key: "other", category: "Altro", label: "Aggiungi spesa generica" },
-];
 
 const API_EXPENSE_URL = `${API_BASE_URL}/trips/current/expenses`;
 const LEGACY_URL_TEMPLATE =
@@ -48,7 +39,7 @@ function ShortcutsPage() {
   };
   const copyLegacy = () => copy("legacy", LEGACY_URL_TEMPLATE, "Link");
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <header className="px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2 flex items-center gap-2">
         <button onClick={() => nav({ to: "/profile" })} className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent" aria-label="Indietro">
           <ChevronLeft className="h-5 w-5" />
@@ -70,15 +61,15 @@ function ShortcutsPage() {
             <li>Apri l'app Comandi su iPhone e crea un nuovo comando con <span className="font-medium text-foreground">+</span>.</li>
             <li>Aggiungi <span className="font-medium text-foreground">Chiedi input</span> tipo Numero, domanda: "Importo".</li>
             <li>Aggiungi <span className="font-medium text-foreground">Scegli dal menu</span> con voci: Pranzo, Cena, Colazione, Hotel, City tax, Taxi, Treno, Aereo, Mezzi pubblici, Carburante, Altro.</li>
-            <li>
+            <li className="break-words">
               Aggiungi <span className="font-medium text-foreground">Ottieni contenuti URL</span> con questi parametri:
               <ul className="mt-1 list-disc pl-5 space-y-1">
-                <li>URL: <span className="font-mono text-foreground">{API_EXPENSE_URL}</span></li>
+                <li className="break-all [overflow-wrap:anywhere]">URL: <span className="font-mono text-foreground">{API_EXPENSE_URL}</span></li>
                 <li>Metodo: <span className="font-mono text-foreground">POST</span></li>
-                <li>Headers: <span className="font-mono text-foreground">Authorization: Bearer &lt;TOKEN&gt;</span>, <span className="font-mono text-foreground">Content-Type: application/json</span>, <span className="font-mono text-foreground">Accept: application/json</span></li>
+                <li className="break-all [overflow-wrap:anywhere]">Headers: <span className="font-mono text-foreground">Authorization: Bearer &lt;TOKEN&gt;</span>, <span className="font-mono text-foreground">Content-Type: application/json</span>, <span className="font-mono text-foreground">Accept: application/json</span></li>
                 <li>
                   Corpo (JSON):
-                  <pre className="mt-1 rounded-lg bg-muted p-2 text-[11px] font-mono whitespace-pre-wrap break-all text-foreground">{`{
+                  <pre className="mt-1 rounded-lg bg-muted p-2 text-[11px] font-mono whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground">{`{
   "category": "Categoria scelta",
   "amount": Importo,
   "date": "Data attuale",
@@ -98,7 +89,7 @@ function ShortcutsPage() {
         <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
           <div>
             <div className="text-sm font-semibold mb-1">URL API</div>
-            <div className="rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono break-all">{API_EXPENSE_URL}</div>
+            <div className="rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">{API_EXPENSE_URL}</div>
             <button
               onClick={copyUrl}
               className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium active:opacity-90"
@@ -147,7 +138,7 @@ function ShortcutsPage() {
             Se non vuoi usare l'API in background, esiste ancora un link che apre la webapp e
             aggiunge la spesa. Consigliamo il metodo POST sopra: resta tutto in background.
           </p>
-          <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono break-all">
+          <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-[12px] font-mono whitespace-pre-wrap break-all [overflow-wrap:anywhere]">
             {LEGACY_URL_TEMPLATE}
           </div>
           <button
@@ -160,25 +151,6 @@ function ShortcutsPage() {
         </details>
       </div>
 
-      <div className="px-4 mt-4 mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-        Scorciatoie rapide in-app
-      </div>
-      <div className="px-4 grid grid-cols-1 gap-2">
-        {ACTIONS.map((a) => (
-          <Link
-            key={a.key}
-            to="/new-expense"
-            search={{ category: a.category } as never}
-            className="flex items-center gap-3 rounded-2xl bg-card border border-border px-4 py-3.5 active:bg-accent"
-          >
-            <div className="h-10 w-10 rounded-full bg-muted grid place-items-center text-xl shrink-0">
-              {categoryIcon[a.category]}
-            </div>
-            <div className="flex-1 text-sm font-medium">{a.label}</div>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Shortcut</span>
-          </Link>
-        ))}
-      </div>
       <div className="h-6" />
     </div>
   );
