@@ -57,7 +57,7 @@ function MealsPage() {
 
       <TripHeader label="Trasferta selezionata" />
 
-      <div className="px-4 grid grid-cols-3 gap-2">
+      <div className="px-4 mt-3 grid grid-cols-3 gap-2">
         <MiniStat label="Totale" value={eur(totals.total)} />
         <MiniStat label="Media/g" value={eur(totals.avg)} />
         <MiniStat
