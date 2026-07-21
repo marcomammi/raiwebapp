@@ -16,6 +16,24 @@ import { categoryIcon } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isMealAllowed } from "@/lib/trip-utils";
 
+/**
+ * Restituisce le categorie ammesse per l'id spesa in base al prefisso del
+ * record backend, così il PATCH non finisce mai su categorie incompatibili.
+ */
+function allowedCategoriesFor(id: string): ExpenseCategory[] {
+  if (id.startsWith("dest:")) return ["Treno", "Aereo", "Mezzi pubblici"];
+  if (id.startsWith("meal:")) {
+    const part = id.split(":")[2] ?? id.split(":")[1] ?? "";
+    if (part === "lunch" || part === "dinner") return ["Pranzo", "Cena"];
+    if (part === "breakfast") return ["Colazione"];
+    if (part === "lodging") return ["Hotel"];
+  }
+  if (id.startsWith("doc:") || id.startsWith("undoc:")) {
+    return EXPENSE_CATEGORIES.filter((c) => !MEAL_CATEGORIES.includes(c));
+  }
+  return [...EXPENSE_CATEGORIES];
+}
+
 interface Props {
   expense: Expense;
   trip?: Trip | null;
@@ -24,6 +42,8 @@ interface Props {
 
 export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   const qc = useQueryClient();
+  const availableCategories = useMemo(() => allowedCategoriesFor(expense.id), [expense.id]);
+  const categoryLocked = availableCategories.length === 1;
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [amount, setAmount] = useState(String(expense.amount).replace(".", ","));
   const [date, setDate] = useState(expense.date);
@@ -56,6 +76,14 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   useEffect(() => {
     if (!isMeal) setForfait(false);
   }, [isMeal]);
+
+  // Se la categoria corrente non è tra quelle ammesse dal record backend,
+  // riallineala alla prima disponibile per evitare PATCH invalidi.
+  useEffect(() => {
+    if (!availableCategories.includes(category)) {
+      setCategory(availableCategories[0]);
+    }
+  }, [availableCategories, category]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -161,14 +189,16 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
 
           <Field label="Categoria">
             <div className="grid grid-cols-4 gap-2">
-              {EXPENSE_CATEGORIES.map((c) => (
+              {availableCategories.map((c) => (
                 <button
                   type="button"
                   key={c}
-                  onClick={() => setCategory(c)}
+                  onClick={() => !categoryLocked && setCategory(c)}
+                  disabled={categoryLocked}
                   className={cn(
                     "aspect-square rounded-2xl border text-[11px] font-medium flex flex-col items-center justify-center gap-1 transition",
                     category === c ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border",
+                    categoryLocked && "opacity-100 cursor-default",
                   )}
                 >
                   <span className="text-lg leading-none">{categoryIcon[c]}</span>
@@ -176,6 +206,15 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
                 </button>
               ))}
             </div>
+            {categoryLocked ? (
+              <p className="text-[11px] text-muted-foreground">
+                Categoria fissata dal tipo di record.
+              </p>
+            ) : availableCategories.length < EXPENSE_CATEGORIES.length ? (
+              <p className="text-[11px] text-muted-foreground">
+                Solo categorie compatibili con questo record.
+              </p>
+            ) : null}
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
