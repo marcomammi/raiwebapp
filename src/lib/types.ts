@@ -46,6 +46,8 @@ export interface Expense {
   sync?: SyncStatus;
   meal_mode?: MealMode;
   meal_type?: MealType;
+  /** Se il backend indica esplicitamente che la voce concorre al totale. */
+  counts_in_total?: boolean;
 }
 
 export type TripStatus = "draft" | "in_progress" | "closed";
@@ -72,6 +74,16 @@ export interface Trip {
   meal_city_adjustment_label?: string;
   lunch_budget?: number;
   dinner_budget?: number;
+  /** Totale spese conteggiabili calcolato dal backend. */
+  spent_total?: number;
+  /** Saldo anticipo dal backend (anticipo - spent_total). */
+  advance_balance?: number;
+  /** Budget pasti totale calcolato dal backend sui giorni con diritto. */
+  meal_budget_total?: number;
+  /** Numero pasti (pranzo+cena) a cui l'utente ha diritto sull'intera trasferta. */
+  entitled_meal_count?: number;
+  /** Elenco dei diritti pasto giornalieri. */
+  meal_entitlements?: MealEntitlement[];
 }
 
 export interface MealRulesSnapshot {
@@ -82,6 +94,26 @@ export interface MealRulesSnapshot {
   currency?: string;
   city_adjustment_applied?: boolean;
   city_adjustment_label?: string;
+  entitlements?: MealEntitlement[];
+}
+
+/**
+ * Diritto pasti per un singolo giorno della trasferta.
+ * Tutti i valori (budget, orari, etichette) sono forniti dal backend:
+ * il frontend non hardcoda importi né soglie.
+ */
+export interface MealEntitlement {
+  date: string;
+  lunch_allowed: boolean;
+  dinner_allowed: boolean;
+  lunch_budget?: number;
+  dinner_budget?: number;
+  daily_budget?: number;
+  lunch_label?: string;
+  dinner_label?: string;
+  lunch_cutoff_time?: string;
+  dinner_cutoff_time?: string;
+  notes?: string;
 }
 
 export interface TrainSegment {
