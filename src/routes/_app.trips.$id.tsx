@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MoreHorizontal, FileText, Download, Mail, X } from "lucide-react";
 import { getTrip, getExpensesForTrip, deleteExpense, generatePdf, emailPdf, updateMealBudget, type GeneratedPdf } from "@/lib/api";
