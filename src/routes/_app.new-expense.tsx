@@ -44,10 +44,25 @@ function NewExpensePage() {
 
   const isMeal = MEAL_CATEGORIES.includes(category);
   const mealType = category === "Pranzo" ? "lunch" : category === "Cena" ? "dinner" : undefined;
+  const selectedTrip = trips.find((t) => t.id === tripId);
+  const snapshot = selectedTrip?.meal_rules_snapshot;
+  const forfaitAmount = snapshot?.forfait_amount;
+  const forfaitAvailable = typeof forfaitAmount === "number" && forfaitAmount > 0;
+  const forfaitAmountStr = forfaitAvailable
+    ? String(forfaitAmount).replace(".", ",")
+    : "";
+  const displayedAmount = isMeal && forfait && forfaitAvailable ? forfaitAmountStr : amount;
+  const amountLocked = isMeal && forfait;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const n = Number(amount.replace(",", "."));
+    const effective = isMeal && forfait
+      ? (forfaitAvailable ? String(forfaitAmount) : "")
+      : amount;
+    if (isMeal && forfait && !forfaitAvailable) {
+      return toast.error("Importo forfait non disponibile");
+    }
+    const n = Number(effective.replace(",", "."));
     if (!Number.isFinite(n) || n <= 0) return toast.error("Importo non valido");
     if (!tripId) return toast.error("Seleziona una trasferta");
     setSaving(true);
@@ -106,14 +121,27 @@ function NewExpensePage() {
               <input
                 type="text"
                 inputMode="decimal"
-                autoFocus
+                autoFocus={!amountLocked}
                 placeholder="0,00"
-                value={amount}
+                value={displayedAmount}
+                readOnly={amountLocked}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
-                className="w-40 text-center text-5xl font-semibold tabular-nums bg-transparent border-0 focus:outline-none"
+                className={cn(
+                  "w-40 text-center text-5xl font-semibold tabular-nums bg-transparent border-0 focus:outline-none",
+                  amountLocked && "text-muted-foreground",
+                )}
               />
               <span className="text-2xl font-medium text-muted-foreground">€</span>
             </div>
+            {isMeal && forfait && (
+              <p className={cn("mt-1 text-[11px]", forfaitAvailable ? "text-muted-foreground" : "text-amber-600")}>
+                {forfaitAvailable
+                  ? "Importo forfait dal backend — non modificabile"
+                  : snapshot
+                    ? "Importo forfait non disponibile"
+                    : "Regole pasti non disponibili"}
+              </p>
+            )}
           </div>
         </div>
 
