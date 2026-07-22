@@ -221,24 +221,24 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
             ) : null}
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             <Field label="Data">
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+                className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm"
               />
             </Field>
             <Field label="Pagato da">
-              <div className="grid grid-cols-2 rounded-xl bg-muted p-1 h-12 text-xs">
+              <div className="grid grid-cols-2 rounded-xl bg-muted p-1 h-12 text-xs min-w-0">
                 {(["employee", "company"] as PaidBy[]).map((p) => (
                   <button
                     type="button"
                     key={p}
                     onClick={() => setPaidBy(p)}
                     className={cn(
-                      "rounded-lg font-medium",
+                      "rounded-lg font-medium min-w-0 truncate",
                       paidBy === p ? "bg-card shadow-sm text-foreground" : "text-muted-foreground",
                     )}
                   >

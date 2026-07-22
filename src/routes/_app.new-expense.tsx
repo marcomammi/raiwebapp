@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { z } from "zod";
 import { createExpense, getTrips } from "@/lib/api";
-import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
+import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type Expense, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
 import { isMealAllowed } from "@/lib/trip-utils";
 import { categoryIcon, formatAmountInput, normalizeAmountInput, todayISO } from "@/lib/format";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const searchSchema = z.object({
   trip: z.string().optional(),
   category: z.string().optional(),
+  returnTo: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_app/new-expense")({
@@ -26,6 +27,16 @@ function NewExpensePage() {
   const qc = useQueryClient();
   const search = Route.useSearch();
   const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
+  const returnTo = search.returnTo;
+  const goBack = () => {
+    if (returnTo) {
+      nav({ to: returnTo as never });
+    } else if (tripId) {
+      nav({ to: "/trips/$id", params: { id: tripId } });
+    } else {
+      nav({ to: "/trips" });
+    }
+  };
 
   const defaultTrip = search.trip ?? trips.find((t) => t.status === "in_progress")?.id ?? trips[0]?.id ?? "";
   const [tripId, setTripId] = useState(defaultTrip);
@@ -76,7 +87,7 @@ function NewExpensePage() {
     setSaving(true);
     try {
       const mealMode: MealMode | undefined = isMeal ? (forfait ? "forfait" : "receipt") : undefined;
-      await createExpense(tripId, {
+      const created = await createExpense(tripId, {
         category, amount: rounded, date, note: note || undefined,
         paid_by: paidBy,
         receipt_url: forfait ? undefined : receipt,
@@ -84,11 +95,21 @@ function NewExpensePage() {
         meal_mode: mealMode,
         meal_type: mealType,
       });
+      // Aggiornamento ottimistico immediato delle cache
+      const pushInto = (key: unknown[]) => {
+        qc.setQueryData<Expense[]>(key, (prev) => (prev ? [created, ...prev] : [created]));
+      };
+      pushInto(["expenses", tripId]);
+      pushInto(["expenses", "all"]);
       qc.invalidateQueries({ queryKey: ["expenses"] });
-      qc.invalidateQueries({ queryKey: ["expenses", tripId] });
-      qc.invalidateQueries({ queryKey: ["expenses", "all"] });
+      qc.invalidateQueries({ queryKey: ["trips"] });
+      qc.invalidateQueries({ queryKey: ["trip", tripId] });
       toast.success("Spesa salvata");
-      nav({ to: "/trips/$id", params: { id: tripId } });
+      if (returnTo) {
+        nav({ to: returnTo as never });
+      } else {
+        nav({ to: "/trips/$id", params: { id: tripId } });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore");
     } finally {
@@ -107,7 +128,7 @@ function NewExpensePage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between border-b border-border">
-        <button onClick={() => nav({ to: "/trips" })} className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent" aria-label="Chiudi">
+        <button onClick={goBack} className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent" aria-label="Chiudi">
           <X className="h-5 w-5" />
         </button>
         <h1 className="text-base font-semibold">Nuova spesa</h1>
@@ -167,14 +188,14 @@ function NewExpensePage() {
                 key={c}
                 onClick={() => setCategory(c)}
                 className={cn(
-                  "aspect-square rounded-2xl border text-[11px] font-medium flex flex-col items-center justify-center gap-1 transition",
+                  "h-16 min-w-0 rounded-2xl border text-[10px] font-medium flex flex-col items-center justify-center gap-1 transition active:scale-[0.97]",
                   category === c
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-foreground"
+                    : "bg-card border-border text-foreground",
                 )}
               >
-                <span className="text-xl leading-none">{categoryIcon[c]}</span>
-                <span className="leading-tight text-center px-1">{c}</span>
+                <span className="text-lg leading-none">{categoryIcon[c]}</span>
+                <span className="leading-tight text-center px-0.5 truncate w-full">{c}</span>
               </button>
             ))}
           </div>
@@ -192,24 +213,24 @@ function NewExpensePage() {
           </select>
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
           <Field label="Data">
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+              className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm"
             />
           </Field>
           <Field label="Pagato da">
-            <div className="grid grid-cols-2 rounded-xl bg-muted p-1 h-12 text-xs">
+            <div className="grid grid-cols-2 rounded-xl bg-muted p-1 h-12 text-xs min-w-0">
               {(["employee", "company"] as PaidBy[]).map((p) => (
                 <button
                   type="button"
                   key={p}
                   onClick={() => setPaidBy(p)}
                   className={cn(
-                    "rounded-lg font-medium",
+                    "rounded-lg font-medium min-w-0 truncate",
                     paidBy === p ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                   )}
                 >
