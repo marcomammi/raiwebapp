@@ -72,7 +72,7 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
             <Mail className="h-4 w-4" /> {busy === "email" ? "Invio…" : "Invia alla mia email"}
           </button>
           {user?.email && (
-            <p className="text-[11px] text-muted-foreground text-center">Verrà inviato a {user.email}</p>
+            <p className="text-[11px] text-muted-foreground text-center">Verrà inviata a {user.email}</p>
           )}
         </div>
       </div>
