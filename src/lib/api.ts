@@ -135,6 +135,10 @@ function safeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return null; }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // ---------- seed ----------
 function seed() {
   if (!isBrowser() || !DEV_MOCK_TRIPS) return;
@@ -250,7 +254,8 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   if (!token) return null;
   try {
     const raw = await apiFetch<Record<string, unknown>>("/me");
-    const profile = toProfile(normalizeUser(raw));
+    const source = isRecord(raw.user) ? raw.user : raw;
+    const profile = toProfile(normalizeUser(source));
     if (isBrowser()) localStorage.setItem(LS_USER, JSON.stringify(profile));
     return profile;
   } catch {
@@ -282,8 +287,14 @@ function assertAllowedEmail(email: string) {
 }
 
 export async function getUsers(): Promise<AppUser[]> {
-  const raw = await apiFetch<Record<string, unknown>[]>("/admin/users");
-  return raw.map(normalizeUser).sort((a, b) => a.email.localeCompare(b.email));
+  const raw = await apiFetch<unknown>("/admin/users");
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) list = raw;
+  else if (isRecord(raw) && Array.isArray(raw.users)) list = raw.users;
+  return list
+    .filter(isRecord)
+    .map(normalizeUser)
+    .sort((a, b) => a.email.localeCompare(b.email));
 }
 
 export async function createUser(payload: UserPayload): Promise<AppUser> {
@@ -295,7 +306,7 @@ export async function createUser(payload: UserPayload): Promise<AppUser> {
     method: "POST",
     body: JSON.stringify({ ...payload, email }),
   });
-  return normalizeUser(raw);
+  return normalizeUser(isRecord(raw.user) ? raw.user : raw);
 }
 
 export async function updateUser(id: string, payload: Partial<UserPayload>): Promise<AppUser> {
@@ -304,7 +315,7 @@ export async function updateUser(id: string, payload: Partial<UserPayload>): Pro
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  return normalizeUser(raw);
+  return normalizeUser(isRecord(raw.user) ? raw.user : raw);
 }
 
 export async function deleteUser(id: string): Promise<void> {
