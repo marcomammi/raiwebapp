@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface SwipeAction {
@@ -35,8 +35,27 @@ export function SwipeRow({
   const startOffset = useRef(0);
   const axis = useRef<"h" | "v" | null>(null);
   const moved = useRef(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const reset = () => setOffset(0);
+
+  // Chiudi la riga se l'utente scrolla verticalmente o tocca fuori.
+  useEffect(() => {
+    if (offset === 0) return;
+    const onScroll = () => setOffset(0);
+    const onDocPointerDown = (e: PointerEvent) => {
+      const el = rootRef.current;
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setOffset(0);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("pointerdown", onDocPointerDown);
+    };
+  }, [offset]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -52,7 +71,9 @@ export function SwipeRow({
     const dx = e.clientX - startX.current;
     const dy = e.clientY - startY.current;
     if (axis.current == null) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      // Soglia più alta: evita che micro-movimenti orizzontali
+      // spostino la riga per errore durante uno scroll verticale.
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
       axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
     }
     if (axis.current !== "h") return;
@@ -87,8 +108,10 @@ export function SwipeRow({
 
   const bg = action.tone === "primary" ? "bg-primary" : "bg-red-600";
 
+  const open = offset !== 0;
+
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div ref={rootRef} className={cn("relative overflow-hidden", className)}>
       <button
         type="button"
         onClick={() => {
@@ -98,9 +121,12 @@ export function SwipeRow({
         style={{ width: actionWidth }}
         className={cn(
           "absolute inset-y-0 right-0 flex items-center justify-center text-white text-sm font-semibold active:scale-[0.97] transition",
+          !open && "opacity-0 pointer-events-none",
           bg,
         )}
         aria-label={action.label}
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
       >
         {action.label}
       </button>
