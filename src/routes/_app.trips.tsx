@@ -4,10 +4,12 @@ import { ChevronRight, FileText, Circle, CheckCircle2, Plus } from "lucide-react
 import { getAllExpenses } from "@/lib/api";
 import { eur, formatDate } from "@/lib/format";
 import type { Trip, TripStatus } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 import { countsInTotal } from "@/lib/trip-utils";
+import { SwipeRow } from "@/components/swipe-row";
+import { PdfSheet } from "@/components/pdf-sheet";
 
 export const Route = createFileRoute("/_app/trips")({
   head: () => ({ meta: [{ title: "Trasferte" }, { name: "robots", content: "noindex" }] }),
@@ -29,11 +31,13 @@ function TripsPage() {
   const { trips, isLoading, selectedTripId, setSelectedTripId, refetch, isError } = useSelectedTrip();
   const navigate = useNavigate();
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", "all"], queryFn: getAllExpenses });
+  const [pdfTripId, setPdfTripId] = useState<string | null>(null);
 
   const openTrip = (id: string) => {
     setSelectedTripId(id);
     navigate({ to: "/expenses" });
   };
+  const openPdf = (id: string) => setPdfTripId(id);
 
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
@@ -95,6 +99,7 @@ function TripsPage() {
                 total={totals[inProgress.id] ?? 0}
                 selected={inProgress.id === selectedTripId}
                 onSelect={() => openTrip(inProgress.id)}
+                onPdf={() => openPdf(inProgress.id)}
                 featured
               />
             ) : (
@@ -109,6 +114,7 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
+            onPdf={openPdf}
             empty="Nessuna trasferta conclusa."
           />
           <Section
@@ -117,20 +123,25 @@ function TripsPage() {
             totals={totals}
             selectedId={selectedTripId}
             onSelect={openTrip}
+            onPdf={openPdf}
             empty="Nessuna bozza."
           />
         </div>
+      )}
+      {pdfTripId && (
+        <PdfSheet tripId={pdfTripId} onClose={() => setPdfTripId(null)} />
       )}
     </div>
   );
 }
 
-function Section({ title, trips, totals, selectedId, onSelect, empty }: {
+function Section({ title, trips, totals, selectedId, onSelect, onPdf, empty }: {
   title: string;
   trips: Trip[];
   totals: Record<string, number>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onPdf: (id: string) => void;
   empty: string;
 }) {
   return (
@@ -147,6 +158,7 @@ function Section({ title, trips, totals, selectedId, onSelect, empty }: {
                 total={totals[t.id] ?? 0}
                 selected={t.id === selectedId}
                 onSelect={() => onSelect(t.id)}
+                onPdf={() => onPdf(t.id)}
               />
             </li>
           ))}
@@ -156,11 +168,12 @@ function Section({ title, trips, totals, selectedId, onSelect, empty }: {
   );
 }
 
-function TripCard({ trip, total, selected, onSelect, featured }: {
+function TripCard({ trip, total, selected, onSelect, onPdf, featured }: {
   trip: Trip;
   total: number;
   selected: boolean;
   onSelect: () => void;
+  onPdf: () => void;
   featured?: boolean;
 }) {
   const effectiveTotal = typeof trip.spent_total === "number" ? trip.spent_total : total;
@@ -168,6 +181,13 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
     ? trip.advance_balance
     : trip.advance != null ? trip.advance - effectiveTotal : null;
   return (
+    <SwipeRow
+      action={{ label: "Distinta", tone: "primary", onClick: onPdf }}
+      className="rounded-2xl"
+      rowClassName={cn(
+        featured ? "bg-primary/5" : "bg-card",
+      )}
+    >
     <div
       className={cn(
         "w-full flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition",
@@ -178,7 +198,7 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
       <button
         type="button"
         onClick={onSelect}
-        className="flex-1 min-w-0 text-left active:opacity-80"
+        className="flex-1 min-w-0 text-left active:opacity-80 active:scale-[0.99] transition"
       >
         <div className="flex items-center gap-2">
           <h3 className={cn("truncate font-semibold", featured ? "text-xl" : "text-lg")}>{trip.title}</h3>
@@ -212,5 +232,6 @@ function TripCard({ trip, total, selected, onSelect, featured }: {
       </button>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
     </div>
+    </SwipeRow>
   );
 }
