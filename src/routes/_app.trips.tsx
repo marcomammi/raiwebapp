@@ -8,7 +8,6 @@ import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 import { countsInTotal } from "@/lib/trip-utils";
-import { SwipeRow } from "@/components/swipe-row";
 import { PdfSheet } from "@/components/pdf-sheet";
 
 export const Route = createFileRoute("/_app/trips")({
@@ -181,16 +180,9 @@ function TripCard({ trip, total, selected, onSelect, onPdf, featured }: {
     ? trip.advance_balance
     : trip.advance != null ? trip.advance - effectiveTotal : null;
   return (
-    <SwipeRow
-      action={{ label: "Distinta", tone: "primary", onClick: onPdf }}
-      className="rounded-2xl"
-      rowClassName={cn(
-        featured ? "bg-primary/5" : "bg-card",
-      )}
-    >
     <div
       className={cn(
-        "w-full flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition",
+        "w-full flex items-center gap-2 rounded-2xl border px-4 py-3.5 transition active:scale-[0.99]",
         featured ? "bg-primary/5 border-primary/30" : "bg-card border-border",
         selected && !featured && "ring-2 ring-primary/40",
       )}
@@ -224,14 +216,25 @@ function TripCard({ trip, total, selected, onSelect, onPdf, featured }: {
       <button
         type="button"
         onClick={onSelect}
-        className="text-right shrink-0 active:opacity-80"
+        className="text-right shrink-0 active:opacity-80 pl-1"
         aria-label="Apri trasferta"
       >
         <div className="text-base font-semibold tabular-nums">{eur(effectiveTotal)}</div>
         <div className="text-[10px] text-muted-foreground">totale</div>
       </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPdf();
+        }}
+        aria-label="Distinta PDF"
+        title="Distinta PDF"
+        className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:text-foreground active:bg-accent transition"
+      >
+        <FileText className="h-4 w-4" />
+      </button>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
     </div>
-    </SwipeRow>
   );
 }
