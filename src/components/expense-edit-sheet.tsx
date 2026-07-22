@@ -200,13 +200,13 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
                   onClick={() => !categoryLocked && setCategory(c)}
                   disabled={categoryLocked}
                   className={cn(
-                    "aspect-square rounded-2xl border text-[11px] font-medium flex flex-col items-center justify-center gap-1 transition",
+                    "h-16 min-w-0 rounded-2xl border text-[10px] font-medium flex flex-col items-center justify-center gap-1 transition",
                     category === c ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border",
                     categoryLocked && "opacity-100 cursor-default",
                   )}
                 >
                   <span className="text-lg leading-none">{categoryIcon[c]}</span>
-                  <span className="leading-tight text-center px-1">{c}</span>
+                  <span className="leading-tight text-center px-0.5 truncate w-full">{c}</span>
                 </button>
               ))}
             </div>

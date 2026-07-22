@@ -41,14 +41,11 @@ function NewExpensePage() {
   const [forfait, setForfait] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const isSafeReturn = (p: string | undefined): p is string =>
+    !!p && (p === "/expenses" || p === "/meals" || p === "/trips" || p.startsWith("/trips/"));
   const goBack = () => {
-    if (returnTo) {
-      nav({ to: returnTo as never });
-    } else if (tripId) {
-      nav({ to: "/trips/$id", params: { id: tripId } });
-    } else {
-      nav({ to: "/trips" });
-    }
+    if (isSafeReturn(returnTo)) nav({ to: returnTo as never });
+    else nav({ to: "/trips" });
   };
 
   // keep in sync if trips load after mount
@@ -105,11 +102,8 @@ function NewExpensePage() {
       qc.invalidateQueries({ queryKey: ["trips"] });
       qc.invalidateQueries({ queryKey: ["trip", tripId] });
       toast.success("Spesa salvata");
-      if (returnTo) {
-        nav({ to: returnTo as never });
-      } else {
-        nav({ to: "/trips/$id", params: { id: tripId } });
-      }
+      if (isSafeReturn(returnTo)) nav({ to: returnTo as never });
+      else nav({ to: "/expenses" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore");
     } finally {

@@ -443,7 +443,7 @@ function EmptyState({ tripId, text }: { tripId: string; text: string }) {
       <p className="text-sm text-muted-foreground">{text}</p>
       <Link
         to="/new-expense"
-        search={{ trip: tripId } as never}
+        search={{ trip: tripId, returnTo: `/trips/${tripId}` } as never}
         className="mt-3 inline-flex h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm items-center"
       >Aggiungi spesa</Link>
     </div>

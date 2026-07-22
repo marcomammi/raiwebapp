@@ -142,7 +142,11 @@ function MealsPage() {
         {rows.length === 0 && (
           <div className="rounded-2xl bg-card border border-border p-8 text-center">
             <p className="text-sm text-muted-foreground">Nessun pasto registrato.</p>
-            <Link to="/new-expense" className="mt-3 inline-flex h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm items-center">
+            <Link
+              to="/new-expense"
+              search={{ returnTo: "/meals", category: "Pranzo" } as never}
+              className="mt-3 inline-flex h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm items-center"
+            >
               Aggiungi pasto
             </Link>
           </div>
