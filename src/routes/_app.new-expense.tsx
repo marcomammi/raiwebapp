@@ -92,13 +92,18 @@ function NewExpensePage() {
         meal_mode: mealMode,
         meal_type: mealType,
       });
-      // Aggiornamento ottimistico immediato delle cache
+      // Aggiornamento ottimistico immediato delle cache (dedup su id)
       const pushInto = (key: unknown[]) => {
-        qc.setQueryData<Expense[]>(key, (prev) => (prev ? [created, ...prev] : [created]));
+        qc.setQueryData<Expense[]>(key, (prev) => {
+          if (!prev) return [created];
+          return prev.some((x) => x.id === created.id) ? prev : [created, ...prev];
+        });
       };
       pushInto(["expenses", tripId]);
       pushInto(["expenses", "all"]);
       qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["expenses", tripId] });
+      qc.invalidateQueries({ queryKey: ["expenses", "all"] });
       qc.invalidateQueries({ queryKey: ["trips"] });
       qc.invalidateQueries({ queryKey: ["trip", tripId] });
       toast.success("Spesa salvata");
