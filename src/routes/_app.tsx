@@ -67,7 +67,11 @@ function AppShell() {
         <>
           <Link
             to="/new-expense"
-            className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 grid place-items-center active:scale-95 transition"
+            search={{
+              returnTo: path,
+              ...(path.startsWith("/meals") ? { category: "Pranzo" } : {}),
+            } as never}
+            className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 grid place-items-center active:scale-[0.92] transition"
             aria-label="Aggiungi spesa"
           >
             <Plus className="h-6 w-6" />

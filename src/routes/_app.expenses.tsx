@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getExpensesForTrip } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { deleteExpense, getExpensesForTrip } from "@/lib/api";
 import { eur, formatDayHeader, categoryIcon } from "@/lib/format";
 import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { TripHeader } from "@/components/trip-header";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
 import { PdfSheet } from "@/components/pdf-sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import { countsInTotal, sumCountable } from "@/lib/trip-utils";
 import type { Expense } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,6 +21,7 @@ export const Route = createFileRoute("/_app/expenses")({
 
 function ExpensesPage() {
   const { selectedTrip, selectedTripId } = useSelectedTrip();
+  const qc = useQueryClient();
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses", selectedTripId ?? "none"],
     queryFn: () => (selectedTripId ? getExpensesForTrip(selectedTripId) : Promise.resolve([])),
@@ -26,6 +29,23 @@ function ExpensesPage() {
   });
   const [editing, setEditing] = useState<Expense | null>(null);
   const [pdfOpen, setPdfOpen] = useState(false);
+
+  const removeExpense = async (e: Expense) => {
+    if (!confirm(`Eliminare la spesa "${e.category}" da ${eur(e.amount)}?`)) return;
+    const tripId = e.trip_id;
+    qc.setQueryData<Expense[]>(["expenses", tripId], (prev) => prev?.filter((x) => x.id !== e.id) ?? prev);
+    qc.setQueryData<Expense[]>(["expenses", "all"], (prev) => prev?.filter((x) => x.id !== e.id) ?? prev);
+    try {
+      await deleteExpense(e.id);
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["trips"] });
+      qc.invalidateQueries({ queryKey: ["trip", tripId] });
+      toast.success("Spesa eliminata");
+    } catch (err) {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.error(err instanceof Error ? err.message : "Errore eliminazione");
+    }
+  };
 
   const grouped = useMemo(() => {
     const m = new Map<string, typeof expenses>();
@@ -74,16 +94,19 @@ function ExpensesPage() {
                 <div className="text-sm font-medium capitalize">{formatDayHeader(date)}</div>
                 <div className="text-sm text-muted-foreground tabular-nums">{eur(dayTot)}</div>
               </div>
-              <div className="rounded-2xl bg-card border border-border divide-y divide-border">
+              <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border bg-card">
                 {items.map((e) => {
                   const countable = countsInTotal(e);
                   return (
-                    <button
+                    <SwipeRow
                       key={e.id}
-                      type="button"
-                      onClick={() => setEditing(e)}
-                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-accent"
+                      action={{ label: "Elimina", tone: "danger", onClick: () => removeExpense(e) }}
                     >
+                      <button
+                        type="button"
+                        onClick={() => setEditing(e)}
+                        className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-accent"
+                      >
                       <div className="h-9 w-9 rounded-full bg-muted grid place-items-center text-lg shrink-0">
                         {categoryIcon[e.category]}
                       </div>
@@ -97,7 +120,8 @@ function ExpensesPage() {
                       <div className={cn("text-sm font-semibold tabular-nums shrink-0", !countable && "text-muted-foreground line-through decoration-muted-foreground/40")}>
                         {eur(e.amount)}
                       </div>
-                    </button>
+                      </button>
+                    </SwipeRow>
                   );
                 })}
               </div>

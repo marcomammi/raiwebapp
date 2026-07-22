@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MoreHorizontal, FileText, Settings2, Pencil } from "lucide-react";
-import { getTrip, getExpensesForTrip } from "@/lib/api";
+import { deleteExpense, getTrip, getExpensesForTrip } from "@/lib/api";
 import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ import { useSelectedTrip } from "@/lib/selected-trip";
 import { ExpenseEditSheet } from "@/components/expense-edit-sheet";
 import { PdfSheet } from "@/components/pdf-sheet";
 import { TripEditSheet } from "@/components/trip-edit-sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import {
   countsInTotal,
   entitlementBudget,
@@ -29,6 +31,7 @@ type Tab = "all" | "meals" | "docs" | "summary";
 function TripDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("all");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pdfSheet, setPdfSheet] = useState(false);
@@ -40,6 +43,22 @@ function TripDetail() {
   const { data: trip } = useQuery({ queryKey: ["trip", id], queryFn: () => getTrip(id) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses", id], queryFn: () => getExpensesForTrip(id) });
   const [editing, setEditing] = useState<Expense | null>(null);
+
+  const removeExpense = async (e: Expense) => {
+    if (!confirm(`Eliminare la spesa "${e.category}" da ${eur(e.amount)}?`)) return;
+    qc.setQueryData<Expense[]>(["expenses", id], (prev) => prev?.filter((x) => x.id !== e.id) ?? prev);
+    qc.setQueryData<Expense[]>(["expenses", "all"], (prev) => prev?.filter((x) => x.id !== e.id) ?? prev);
+    try {
+      await deleteExpense(e.id);
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["trips"] });
+      qc.invalidateQueries({ queryKey: ["trip", id] });
+      toast.success("Spesa eliminata");
+    } catch (err) {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.error(err instanceof Error ? err.message : "Errore eliminazione");
+    }
+  };
 
   const stats = useMemo(() => {
     const clientTotal = sumCountable(expenses);
@@ -180,8 +199,8 @@ function TripDetail() {
       </div>
 
       <div className="px-4 mt-4">
-        {tab === "all" && <ExpensesList expenses={expenses} tripId={id} onEdit={setEditing} />}
-        {tab === "meals" && <MealsList expenses={expenses} trip={trip} onEdit={setEditing} />}
+        {tab === "all" && <ExpensesList expenses={expenses} tripId={id} onEdit={setEditing} onDelete={removeExpense} />}
+        {tab === "meals" && <MealsList expenses={expenses} trip={trip} onEdit={setEditing} onDelete={removeExpense} />}
         {tab === "docs" && <DocsList expenses={expenses} onGenerate={openPdf} hasKmData={hasKmData} />}
         {tab === "summary" && <SummaryView expenses={expenses} advance={trip.advance} onGenerate={openPdf} hasKmData={hasKmData} />}
       </div>
@@ -210,7 +229,7 @@ function StatCard({ label, value, tone, accent }: { label: string; value: string
   );
 }
 
-function ExpensesList({ expenses, tripId, onEdit }: { expenses: Expense[]; tripId: string; onEdit: (e: Expense) => void }) {
+function ExpensesList({ expenses, tripId, onEdit, onDelete }: { expenses: Expense[]; tripId: string; onEdit: (e: Expense) => void; onDelete: (e: Expense) => void }) {
   if (expenses.length === 0)
     return <EmptyState tripId={tripId} text="Nessuna spesa ancora inserita." />;
   const grouped = groupByDate(expenses);
@@ -219,7 +238,9 @@ function ExpensesList({ expenses, tripId, onEdit }: { expenses: Expense[]; tripI
       {grouped.map(([date, items]) => (
         <DayGroup key={date} date={date} items={items}>
           {items.map((e) => (
-            <ExpenseRow key={e.id} e={e} onClick={() => onEdit(e)} />
+            <SwipeRow key={e.id} action={{ label: "Elimina", tone: "danger", onClick: () => onDelete(e) }}>
+              <ExpenseRow e={e} onClick={() => onEdit(e)} />
+            </SwipeRow>
           ))}
         </DayGroup>
       ))}
@@ -227,7 +248,7 @@ function ExpensesList({ expenses, tripId, onEdit }: { expenses: Expense[]; tripI
   );
 }
 
-function MealsList({ expenses, trip, onEdit }: { expenses: Expense[]; trip: Trip; onEdit: (e: Expense) => void }) {
+function MealsList({ expenses, trip, onEdit, onDelete }: { expenses: Expense[]; trip: Trip; onEdit: (e: Expense) => void; onDelete: (e: Expense) => void }) {
   const meals = expenses.filter((e) => MEAL_CATEGORIES.includes(e.category));
   const entitlements = getEntitlements(trip);
   const byDate = new Map<string, Expense[]>();
@@ -270,8 +291,12 @@ function MealsList({ expenses, trip, onEdit }: { expenses: Expense[]; trip: Trip
                 {hasBudget ? `Nessun pasto registrato · disponibile ${eur(dayBudget)}` : "Nessun pasto registrato."}
               </div>
             ) : (
-              <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                {items.map((e) => <ExpenseRow key={e.id} e={e} compact onClick={() => onEdit(e)} />)}
+              <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border bg-card">
+                {items.map((e) => (
+                  <SwipeRow key={e.id} action={{ label: "Elimina", tone: "danger", onClick: () => onDelete(e) }}>
+                    <ExpenseRow e={e} compact onClick={() => onEdit(e)} />
+                  </SwipeRow>
+                ))}
               </div>
             )}
             {hasBudget && items.length > 0 && (
@@ -379,7 +404,7 @@ function DayGroup({ date, items, children }: { date: string; items: Expense[]; c
         <div className="text-sm font-medium capitalize">{formatDayHeader(date)}</div>
         <div className="text-sm font-semibold tabular-nums text-muted-foreground">{eur(total)}</div>
       </div>
-      <div className="rounded-2xl bg-card border border-border divide-y divide-border">{children}</div>
+      <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border bg-card">{children}</div>
     </div>
   );
 }
