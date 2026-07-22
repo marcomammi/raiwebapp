@@ -31,7 +31,7 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
     setBusy("email");
     try {
       await emailTripPdf(tripId);
-      toast.success(user?.email ? `Inviato a ${user.email}` : "Email inviata");
+      toast.success(user?.email ? `Inviata\u00a0a ${user.email}` : "Email inviata");
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore invio email");
