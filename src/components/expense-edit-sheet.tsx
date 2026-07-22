@@ -15,6 +15,7 @@ import {
 import { categoryIcon, formatAmountInput, normalizeAmountInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isMealAllowed } from "@/lib/trip-utils";
+import { BottomSheet } from "@/components/bottom-sheet";
 
 /**
  * Restituisce le categorie ammesse per l'id spesa in base al prefisso del
@@ -93,7 +94,7 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
     qc.invalidateQueries({ queryKey: ["trips"] });
   };
 
-  const save = async () => {
+  const save = async (close: () => void) => {
     if (mealBlocked) return toast.error(mealMessage!);
     const effective = amountLocked
       ? (forfaitAvailable ? String(forfaitAmount) : "")
@@ -121,7 +122,7 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
       });
       invalidate();
       toast.success("Spesa aggiornata");
-      onClose();
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore");
     } finally {
@@ -129,14 +130,14 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
     }
   };
 
-  const remove = async () => {
+  const remove = async (close: () => void) => {
     if (!confirm("Eliminare questa spesa?")) return;
     setBusy("delete");
     try {
       await deleteExpense(expense.id);
       invalidate();
       toast.success("Spesa eliminata");
-      onClose();
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore");
     } finally {
@@ -145,18 +146,19 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-background rounded-t-3xl max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <BottomSheet
+      onClose={onClose}
+      className="rounded-t-3xl max-h-[92vh] overflow-y-auto"
+    >
+      {({ close }) => (
+        <>
         <div className="sticky top-0 bg-background/95 backdrop-blur px-4 pt-4 pb-3 flex items-center justify-between border-b border-border">
-          <button onClick={onClose} className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent" aria-label="Chiudi">
+          <button onClick={close} className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent" aria-label="Chiudi">
             <X className="h-5 w-5" />
           </button>
           <h2 className="text-base font-semibold">Modifica spesa</h2>
           <button
-            onClick={save}
+            onClick={() => save(close)}
             disabled={busy !== null || mealBlocked}
             className="text-sm font-semibold text-primary disabled:opacity-40 h-9 px-2"
           >
@@ -288,15 +290,16 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
 
           <button
             type="button"
-            onClick={remove}
+            onClick={() => remove(close)}
             disabled={busy !== null}
             className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-medium disabled:opacity-50"
           >
             {busy === "delete" ? "Eliminazione…" : "Elimina spesa"}
           </button>
         </div>
-      </div>
-    </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
