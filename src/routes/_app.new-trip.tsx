@@ -197,7 +197,7 @@ function NewTripPage() {
           <input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Città" className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base" />
         </Field>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="N. foglio viaggio">
             <input value={travelSheetNumber} onChange={(e) => setTravelSheetNumber(e.target.value)} placeholder="Es. 12345" className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base" />
           </Field>
@@ -206,7 +206,7 @@ function NewTripPage() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="Data inizio">
             <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm" />
           </Field>
@@ -215,7 +215,7 @@ function NewTripPage() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="Ora inizio (opz.)">
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm" />
           </Field>
@@ -319,15 +319,15 @@ function NewTripPage() {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Da" value={t.from} onChange={(e) => updateTrain(i, { from: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input placeholder="A" value={t.to} onChange={(e) => updateTrain(i, { to: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input type="date" value={t.date} onChange={(e) => updateTrain(i, { date: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input placeholder="Treno" value={t.train_number ?? ""} onChange={(e) => updateTrain(i, { train_number: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input type="time" placeholder="Partenza" value={t.departure_time ?? ""} onChange={(e) => updateTrain(i, { departure_time: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input type="time" placeholder="Arrivo" value={t.arrival_time ?? ""} onChange={(e) => updateTrain(i, { arrival_time: e.target.value })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <input type="text" inputMode="decimal" placeholder="Costo €" value={t.amount ? String(t.amount) : ""} onChange={(e) => updateTrain(i, { amount: Number(e.target.value.replace(",", ".")) || 0 })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm" />
-                <select value={t.paid_by} onChange={(e) => updateTrain(i, { paid_by: e.target.value as PaidBy })} className="h-10 rounded-lg border border-input bg-background px-2 text-sm">
+              <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-2">
+                <input placeholder="Da" value={t.from} onChange={(e) => updateTrain(i, { from: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input placeholder="A" value={t.to} onChange={(e) => updateTrain(i, { to: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input type="date" value={t.date} onChange={(e) => updateTrain(i, { date: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input placeholder="Treno" value={t.train_number ?? ""} onChange={(e) => updateTrain(i, { train_number: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input type="time" placeholder="Partenza" value={t.departure_time ?? ""} onChange={(e) => updateTrain(i, { departure_time: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input type="time" placeholder="Arrivo" value={t.arrival_time ?? ""} onChange={(e) => updateTrain(i, { arrival_time: e.target.value })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <input type="text" inputMode="decimal" placeholder="Costo €" value={t.amount ? String(t.amount) : ""} onChange={(e) => updateTrain(i, { amount: Number(e.target.value.replace(",", ".")) || 0 })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm" />
+                <select value={t.paid_by} onChange={(e) => updateTrain(i, { paid_by: e.target.value as PaidBy })} className="w-full min-w-0 h-10 rounded-lg border border-input bg-background px-2 text-sm">
                   <option value="employee">Pagato da me</option>
                   <option value="company">Pagato azienda</option>
                 </select>
