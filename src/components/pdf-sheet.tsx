@@ -3,6 +3,7 @@ import { Download, Mail, X } from "lucide-react";
 import { toast } from "sonner";
 import { downloadTripPdf, emailTripPdf } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { BottomSheet } from "@/components/bottom-sheet";
 
 interface Props {
   tripId: string;
@@ -14,12 +15,12 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
   const { user } = useAuth();
   const [busy, setBusy] = useState<null | "download" | "email">(null);
 
-  const download = async () => {
+  const download = async (close: () => void) => {
     setBusy("download");
     try {
       const res = await downloadTripPdf(tripId);
       toast.success(`Distinta scaricata${res.filename ? `: ${res.filename}` : ""}`);
-      onClose();
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore download PDF");
     } finally {
@@ -27,12 +28,12 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
     }
   };
 
-  const send = async () => {
+  const send = async (close: () => void) => {
     setBusy("email");
     try {
       await emailTripPdf(tripId);
       toast.success(user?.email ? `Inviata\u00a0a ${user.email}` : "Email inviata");
-      onClose();
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore invio email");
     } finally {
@@ -41,14 +42,15 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-background rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <BottomSheet
+      onClose={onClose}
+      className="rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+    >
+      {({ close }) => (
+        <>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Distinta trasferta</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
+          <button onClick={close} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -58,14 +60,14 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
         </p>
         <div className="mt-4 space-y-2">
           <button
-            onClick={download}
+            onClick={() => download(close)}
             disabled={busy !== null}
             className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Download className="h-4 w-4" /> {busy === "download" ? "Preparazione…" : "Scarica PDF"}
           </button>
           <button
-            onClick={send}
+            onClick={() => send(close)}
             disabled={busy !== null || !user?.email}
             className="w-full h-12 rounded-xl bg-card border border-border font-medium flex items-center justify-center gap-2 disabled:opacity-60"
           >
@@ -75,7 +77,8 @@ export function PdfSheet({ tripId, hasKmData, onClose }: Props) {
             <p className="text-[11px] text-muted-foreground text-center">Verrà inviata a {user.email}</p>
           )}
         </div>
-      </div>
-    </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }

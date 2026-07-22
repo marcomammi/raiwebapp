@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { updateTrip, type TripUpdatePayload } from "@/lib/api";
 import type { Trip } from "@/lib/types";
 import { formatAmountInput, normalizeAmountInput } from "@/lib/format";
+import { BottomSheet } from "@/components/bottom-sheet";
 
 interface Props {
   trip: Trip;
@@ -46,7 +47,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
 
   const canSave = errors.length === 0 && !busy;
 
-  const save = async () => {
+  const save = async (close: () => void) => {
     if (!canSave) return;
     const adv = toNum(advance);
     const payload: TripUpdatePayload = {
@@ -67,7 +68,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["trip", trip.id] });
       qc.invalidateQueries({ queryKey: ["trips"] });
       toast.success("Impostazioni aggiornate");
-      onClose();
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore nel salvataggio");
     } finally {
@@ -76,14 +77,15 @@ export function TripEditSheet({ trip, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-background rounded-t-3xl max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <BottomSheet
+      onClose={onClose}
+      className="rounded-t-3xl max-h-[92vh] overflow-y-auto"
+    >
+      {({ close }) => (
+        <>
         <div className="sticky top-0 bg-background/95 backdrop-blur px-4 pt-4 pb-3 flex items-center justify-between border-b border-border">
           <button
-            onClick={onClose}
+            onClick={close}
             className="h-9 w-9 grid place-items-center -ml-2 rounded-full active:bg-accent"
             aria-label="Chiudi"
           >
@@ -91,7 +93,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
           </button>
           <h2 className="text-base font-semibold">Modifica impostazioni</h2>
           <button
-            onClick={save}
+            onClick={() => save(close)}
             disabled={!canSave}
             className="text-sm font-semibold text-primary disabled:opacity-40 h-9 px-2"
           >
@@ -197,8 +199,9 @@ export function TripEditSheet({ trip, onClose }: Props) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 

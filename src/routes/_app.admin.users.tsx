@@ -13,6 +13,7 @@ import type { AppUser, UserRole, UserStatus } from "@/lib/types";
 import { toast } from "sonner";
 import { ChevronLeft, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { BottomSheet } from "@/components/bottom-sheet";
 
 export const Route = createFileRoute("/_app/admin/users")({
   head: () => ({ meta: [{ title: "Admin utenti" }, { name: "robots", content: "noindex" }] }),
@@ -197,14 +198,16 @@ function UserFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <BottomSheet
+      onClose={onClose}
+      align="center-sm"
+      className="rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+    >
+      {({ close }) => (
+        <>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{initial ? "Modifica utente" : "Nuovo utente"}</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
+          <button onClick={close} className="h-9 w-9 rounded-full grid place-items-center text-muted-foreground active:bg-accent" aria-label="Chiudi">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -250,8 +253,9 @@ function UserFormModal({
             {saving ? "Salvataggio…" : initial ? "Salva modifiche" : "Crea utente"}
           </button>
         </form>
-      </div>
-    </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 

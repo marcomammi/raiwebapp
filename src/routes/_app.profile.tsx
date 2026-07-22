@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Zap, ChevronRight, ShieldCheck } from "lucide-react";
+import { LogOut, Zap, ChevronRight, ShieldCheck, Coffee } from "lucide-react";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => ({ meta: [{ title: "Profilo" }, { name: "robots", content: "noindex" }] }),
@@ -64,6 +64,22 @@ function ProfilePage() {
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
         )}
+
+        <a
+          href="https://paypal.me/marcomammi1998"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 rounded-2xl bg-card border border-border px-4 py-3.5 active:bg-accent transition"
+        >
+          <div className="h-9 w-9 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
+            <Coffee className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">Ti piace l'app? Offrimi un caffè</div>
+            <div className="text-xs text-muted-foreground">Una piccola donazione via PayPal</div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </a>
 
         <button
           onClick={() => { signOut(); nav({ to: "/login", replace: true }); }}
