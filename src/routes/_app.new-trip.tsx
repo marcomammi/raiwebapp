@@ -197,7 +197,7 @@ function NewTripPage() {
           <input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Città" className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base" />
         </Field>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="N. foglio viaggio">
             <input value={travelSheetNumber} onChange={(e) => setTravelSheetNumber(e.target.value)} placeholder="Es. 12345" className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-base" />
           </Field>
@@ -206,7 +206,7 @@ function NewTripPage() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="Data inizio">
             <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm" />
           </Field>
@@ -215,7 +215,7 @@ function NewTripPage() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           <Field label="Ora inizio (opz.)">
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full min-w-0 h-12 rounded-xl border border-input bg-card px-3 text-sm" />
           </Field>
