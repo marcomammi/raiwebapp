@@ -28,16 +28,6 @@ function NewExpensePage() {
   const search = Route.useSearch();
   const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
   const returnTo = search.returnTo;
-  const goBack = () => {
-    if (returnTo) {
-      nav({ to: returnTo as never });
-    } else if (tripId) {
-      nav({ to: "/trips/$id", params: { id: tripId } });
-    } else {
-      nav({ to: "/trips" });
-    }
-  };
-
   const defaultTrip = search.trip ?? trips.find((t) => t.status === "in_progress")?.id ?? trips[0]?.id ?? "";
   const [tripId, setTripId] = useState(defaultTrip);
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -50,6 +40,16 @@ function NewExpensePage() {
   const [receipt, setReceipt] = useState<string | undefined>(undefined);
   const [forfait, setForfait] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const goBack = () => {
+    if (returnTo) {
+      nav({ to: returnTo as never });
+    } else if (tripId) {
+      nav({ to: "/trips/$id", params: { id: tripId } });
+    } else {
+      nav({ to: "/trips" });
+    }
+  };
 
   // keep in sync if trips load after mount
   if (!tripId && defaultTrip) setTripId(defaultTrip);
