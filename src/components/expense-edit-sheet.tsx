@@ -260,12 +260,47 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
           <Field label="Nota">
             <input
               type="text"
-              value={note}
+              value={isHotel ? nightsNote : note}
+              readOnly={isHotel}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Facoltativa"
-              className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base"
+              className={cn(
+                "w-full h-12 rounded-xl border border-input bg-card px-3 text-base",
+                isHotel && "text-muted-foreground",
+              )}
             />
+            {isHotel && (
+              <p className="text-[11px] text-muted-foreground">
+                Nota automatica: {nightsNote}. La dicitura convenzionato/non convenzionato viene aggiunta sulla distinta.
+              </p>
+            )}
           </Field>
+
+          {isHotel && (
+            <Field label="Hotel convenzionato">
+              <button
+                type="button"
+                onClick={() => setHotelConventioned((v) => !v)}
+                aria-pressed={hotelConventioned}
+                className={cn(
+                  "w-full h-12 rounded-xl border px-4 flex items-center justify-between",
+                  hotelConventioned ? "bg-primary/10 border-primary/40" : "bg-card border-input",
+                )}
+              >
+                <span className="text-sm">
+                  {hotelConventioned ? "Convenzionato Rai" : "Non convenzionato (autorizzato)"}
+                </span>
+                <span className={cn("relative h-7 w-12 rounded-full transition", hotelConventioned ? "bg-primary" : "bg-muted")}>
+                  <span className={cn("absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition", hotelConventioned ? "left-[22px]" : "left-0.5")} />
+                </span>
+              </button>
+              <p className="text-[11px] text-muted-foreground">
+                {hotelConventioned
+                  ? "Annotazione PDF: Pernottamento in hotel convenzionato Rai."
+                  : "Annotazione PDF: Pernottamento in hotel non convenzionato, autorizzato da ufficio viaggi."}
+              </p>
+            </Field>
+          )}
 
           {isMeal && (
             <Field label="Pasto a forfait">
