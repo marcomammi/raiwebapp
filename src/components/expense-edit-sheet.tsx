@@ -14,7 +14,7 @@ import {
 } from "@/lib/types";
 import { categoryIcon, formatAmountInput, normalizeAmountInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { isMealAllowed } from "@/lib/trip-utils";
+import { hotelNightsNote, isMealAllowed } from "@/lib/trip-utils";
 import { BottomSheet } from "@/components/bottom-sheet";
 
 /**
@@ -51,10 +51,15 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
   const [paidBy, setPaidBy] = useState<PaidBy>(expense.paid_by);
   const [note, setNote] = useState(expense.note ?? "");
   const [forfait, setForfait] = useState(expense.meal_mode === "forfait");
+  const [hotelConventioned, setHotelConventioned] = useState(
+    expense.hotel_conventioned ?? true,
+  );
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
 
   const isMeal = MEAL_CATEGORIES.includes(category);
+  const isHotel = category === "Hotel";
   const mealType = category === "Pranzo" ? "lunch" : category === "Cena" ? "dinner" : undefined;
+  const nightsNote = isHotel ? hotelNightsNote(trip) : "";
   const snapshot = trip?.meal_rules_snapshot;
   const forfaitAmount = snapshot?.forfait_amount;
   const forfaitAvailable = typeof forfaitAmount === "number" && forfaitAmount > 0;
@@ -115,10 +120,11 @@ export function ExpenseEditSheet({ expense, trip, onClose }: Props) {
         amount: rounded,
         date,
         paid_by: paidBy,
-        note: note || undefined,
+        note: isHotel ? nightsNote : (note || undefined),
         meal_mode,
         meal_type: mealType,
         receipt_url: forfait ? undefined : expense.receipt_url,
+        ...(isHotel ? { hotel_conventioned: hotelConventioned } : {}),
       });
       invalidate();
       toast.success("Spesa aggiornata");
