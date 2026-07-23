@@ -58,3 +58,22 @@ export function totalMealBudget(trip: Trip | null | undefined): number {
   if (ents.length) return ents.reduce((s, e) => s + entitlementBudget(e), 0);
   return 0;
 }
+
+/**
+ * Numero di notti di pernottamento della trasferta.
+ * Calcolato come differenza (end - start) in giorni, minimo 1.
+ * Se le date non sono valide restituisce 1.
+ */
+export function tripNights(trip: Trip | null | undefined): number {
+  if (!trip?.start_date || !trip?.end_date) return 1;
+  const s = new Date(`${trip.start_date.slice(0, 10)}T00:00:00`);
+  const e = new Date(`${trip.end_date.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return 1;
+  const diff = Math.round((e.getTime() - s.getTime()) / 86_400_000);
+  return Math.max(1, diff);
+}
+
+export function hotelNightsNote(trip: Trip | null | undefined): string {
+  const n = tripNights(trip);
+  return n === 1 ? "1 notte" : `${n} notti`;
+}
