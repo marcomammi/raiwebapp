@@ -48,6 +48,8 @@ export interface Expense {
   meal_type?: MealType;
   /** Se il backend indica esplicitamente che la voce concorre al totale. */
   counts_in_total?: boolean;
+  /** Solo per categoria Hotel: true se l'hotel è convenzionato Rai. */
+  hotel_conventioned?: boolean;
 }
 
 export type TripStatus = "draft" | "in_progress" | "closed";
