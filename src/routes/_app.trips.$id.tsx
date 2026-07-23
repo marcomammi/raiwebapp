@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MoreHorizontal, FileText, Settings2, Pencil } from "lucide-react";
 import { deleteExpense, getTrip, getExpensesForTrip } from "@/lib/api";
-import { eur, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
+import { eur, expenseTitle, formatDate, formatDayHeader, categoryIcon } from "@/lib/format";
 import { MEAL_CATEGORIES, type Expense } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useSelectedTrip } from "@/lib/selected-trip";
@@ -330,7 +330,7 @@ function DocsList({ expenses, onGenerate, hasKmData }: { expenses: Expense[]; on
           {withReceipts.map((e) => (
             <li key={e.id} className="flex items-center gap-3 px-4 py-3">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0 text-sm truncate">{e.category} · {formatDate(e.date)}</div>
+              <div className="flex-1 min-w-0 text-sm truncate">{expenseTitle(e)} · {formatDate(e.date)}</div>
               <div className="text-sm tabular-nums">{eur(e.amount)}</div>
             </li>
           ))}
@@ -421,7 +421,7 @@ function ExpenseRow({ e, onClick, compact }: { e: Expense; onClick?: () => void;
         {categoryIcon[e.category] ?? "•"}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{e.category}</div>
+        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{expenseTitle(e)}</div>
         {e.note && <div className="text-xs text-muted-foreground truncate">{e.note}</div>}
       </div>
       <div className="text-right shrink-0">
