@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { deleteExpense, getExpensesForTrip } from "@/lib/api";
-import { eur, formatDayHeader, categoryIcon } from "@/lib/format";
+import { eur, expenseTitle, formatDayHeader, categoryIcon } from "@/lib/format";
 import { useMemo, useState } from "react";
 import { useSelectedTrip } from "@/lib/selected-trip";
 import { TripHeader } from "@/components/trip-header";
@@ -111,7 +111,7 @@ function ExpensesPage() {
                         {categoryIcon[e.category]}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{e.category}</div>
+                        <div className={cn("text-sm font-medium truncate", !countable && "text-muted-foreground")}>{expenseTitle(e)}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           {!countable ? "azienda" : e.note ?? ""}
                           {countable && e.note ? "" : ""}
