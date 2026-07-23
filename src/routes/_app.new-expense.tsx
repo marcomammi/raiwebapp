@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { z } from "zod";
 import { createExpense, getTrips } from "@/lib/api";
+import { useSelectedTrip } from "@/lib/selected-trip";
 import { EXPENSE_CATEGORIES, MEAL_CATEGORIES, type Expense, type ExpenseCategory, type MealMode, type PaidBy } from "@/lib/types";
 import { hotelNightsNote, isMealAllowed } from "@/lib/trip-utils";
 import { categoryIcon, formatAmountInput, normalizeAmountInput, todayISO } from "@/lib/format";
@@ -26,9 +27,10 @@ function NewExpensePage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const search = Route.useSearch();
+  const { selectedTripId, setSelectedTripId } = useSelectedTrip();
   const { data: trips = [] } = useQuery({ queryKey: ["trips"], queryFn: getTrips });
   const returnTo = search.returnTo;
-  const defaultTrip = search.trip ?? trips.find((t) => t.status === "in_progress")?.id ?? trips[0]?.id ?? "";
+  const defaultTrip = search.trip ?? selectedTripId ?? trips.find((t) => t.status === "in_progress")?.id ?? trips[0]?.id ?? "";
   const [tripId, setTripId] = useState(defaultTrip);
   const [category, setCategory] = useState<ExpenseCategory>(
     (search.category as ExpenseCategory) || "Pranzo",
@@ -49,8 +51,9 @@ function NewExpensePage() {
     else nav({ to: "/trips" });
   };
 
-  // keep in sync if trips load after mount
-  if (!tripId && defaultTrip) setTripId(defaultTrip);
+  useEffect(() => {
+    if (!tripId && defaultTrip) setTripId(defaultTrip);
+  }, [tripId, defaultTrip]);
 
   const isMeal = MEAL_CATEGORIES.includes(category);
   const isHotel = category === "Hotel";
@@ -99,6 +102,7 @@ function NewExpensePage() {
         meal_type: mealType,
         ...(isHotel ? { hotel_conventioned: hotelConventioned } : {}),
       });
+      setSelectedTripId(tripId);
       // Aggiornamento ottimistico immediato delle cache (dedup su id)
       const pushInto = (key: unknown[]) => {
         qc.setQueryData<Expense[]>(key, (prev) => {
@@ -210,7 +214,10 @@ function NewExpensePage() {
         <Field label="Trasferta">
           <select
             value={tripId}
-            onChange={(e) => setTripId(e.target.value)}
+            onChange={(e) => {
+              setTripId(e.target.value);
+              setSelectedTripId(e.target.value);
+            }}
             className="w-full h-12 rounded-xl border border-input bg-card px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {trips.map((t) => (
