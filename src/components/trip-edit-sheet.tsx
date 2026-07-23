@@ -64,9 +64,17 @@ export function TripEditSheet({ trip, onClose }: Props) {
     };
     setBusy(true);
     try {
-      await updateTrip(trip.id, payload);
-      qc.invalidateQueries({ queryKey: ["trip", trip.id] });
-      qc.invalidateQueries({ queryKey: ["trips"] });
+      const updated = await updateTrip(trip.id, payload);
+      // Aggiornamento ottimistico immediato per home e dettaglio
+      qc.setQueryData<Trip>(["trip", trip.id], (prev) => ({ ...(prev ?? trip), ...updated }));
+      qc.setQueryData<Trip[]>(["trips"], (prev) =>
+        prev?.map((t) => (t.id === trip.id ? { ...t, ...updated } : t)) ?? prev,
+      );
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["trip", trip.id] }),
+        qc.invalidateQueries({ queryKey: ["trips"] }),
+        qc.invalidateQueries({ queryKey: ["expenses", trip.id] }),
+      ]);
       toast.success("Impostazioni aggiornate");
       close();
     } catch (err) {
