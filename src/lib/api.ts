@@ -599,6 +599,8 @@ export interface ExpensePayload {
   source?: "app" | "apple_shortcuts" | "web";
   meal_mode?: MealMode;
   meal_type?: MealType;
+  /** Solo per Hotel: convenzionato Rai (default true lato UI). */
+  hotel_conventioned?: boolean;
 }
 
 export async function createExpense(tripId: string, payload: ExpensePayload): Promise<Expense> {
