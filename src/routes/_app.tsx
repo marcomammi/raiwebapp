@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate, useRouter } fr
 import { useEffect } from "react";
 import { Briefcase, Receipt, UtensilsCrossed, User, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { SelectedTripProvider } from "@/lib/selected-trip";
+import { SelectedTripProvider, useSelectedTrip } from "@/lib/selected-trip";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app")({
@@ -39,7 +39,6 @@ const TABS = [
 function AppShell() {
   const { ready, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/login", replace: true });
@@ -53,11 +52,20 @@ function AppShell() {
     );
   }
 
+  return (
+    <SelectedTripProvider>
+      <AppChrome />
+    </SelectedTripProvider>
+  );
+}
+
+function AppChrome() {
+  const location = useLocation();
+  const { selectedTripId } = useSelectedTrip();
   const path = location.pathname;
   const hideChrome = path.startsWith("/new-expense") || path.startsWith("/new-trip");
 
   return (
-    <SelectedTripProvider>
     <div className="min-h-[100dvh] bg-background text-foreground">
       <main className={cn("mx-auto w-full max-w-md", hideChrome ? "" : "pb-32")}>
         <Outlet />
@@ -69,6 +77,7 @@ function AppShell() {
             to="/new-expense"
             search={{
               returnTo: path,
+              ...(selectedTripId ? { trip: selectedTripId } : {}),
               ...(path.startsWith("/meals") ? { category: "Pranzo" } : {}),
             } as never}
             className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 grid place-items-center active:scale-[0.92] transition"
@@ -101,6 +110,5 @@ function AppShell() {
         </>
       )}
     </div>
-    </SelectedTripProvider>
   );
 }
