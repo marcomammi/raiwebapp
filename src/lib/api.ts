@@ -466,6 +466,18 @@ export async function updateTrip(tripId: string, payload: TripUpdatePayload): Pr
   return normalizeTrip(t);
 }
 
+export async function deleteTrip(tripId: string): Promise<void> {
+  if (DEV_MOCK_TRIPS) {
+    await delay(120);
+    const trips = read<Trip[]>(LS_TRIPS, []).filter((t) => t.id !== tripId);
+    const expenses = read<Expense[]>(LS_EXPENSES, []).filter((e) => e.trip_id !== tripId);
+    write(LS_TRIPS, trips);
+    write(LS_EXPENSES, expenses);
+    return;
+  }
+  await apiFetch<void>(`/trips/${encodeURIComponent(tripId)}`, { method: "DELETE" });
+}
+
 // ---------- travel document parsing (train tickets etc.) ----------
 export interface TravelDocumentUpload {
   file: File;
@@ -490,25 +502,23 @@ export async function parseTravelDocuments(
 ): Promise<ParsedTravelDocumentsResult> {
   if (!uploads.length) return {};
   const form = new FormData();
-  const metadata = uploads.map((u, i) => ({
-    index: i,
-    filename: u.filename ?? u.file.name,
-    role: u.role,
-    client_id: u.client_id,
-    has_client_text: !!(u.client_text && u.client_text.length),
-  }));
+  const metadata = uploads.map((u, i) => {
+    const filename = u.filename ?? u.file.name;
+    const isPdf = u.file.type === "application/pdf" || /\.pdf$/i.test(filename);
+    return {
+      index: i,
+      filename,
+      role: u.role,
+      client_id: u.client_id,
+      has_client_text: !isPdf && !!(u.client_text && u.client_text.length),
+    };
+  });
   uploads.forEach((u) => {
     const name = u.filename ?? u.file.name;
-    // Il backend accetta client_texts[] + client_filenames[]: allega il file
-    // solo quando l'OCR locale non ha prodotto testo utile.
-    if (u.client_text && u.client_text.length) {
-      form.append("client_texts[]", u.client_text);
-      form.append("client_filenames[]", name);
-    } else {
-      form.append("files[]", u.file, name);
-      form.append("client_texts[]", "");
-      form.append("client_filenames[]", name);
-    }
+    const isPdf = u.file.type === "application/pdf" || /\.pdf$/i.test(name);
+    form.append("files[]", u.file, name);
+    form.append("client_texts[]", isPdf ? "" : (u.client_text ?? ""));
+    form.append("client_filenames[]", name);
   });
   form.append("metadata", JSON.stringify(metadata));
 
