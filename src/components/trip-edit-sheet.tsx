@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { updateTrip, type TripUpdatePayload } from "@/lib/api";
+import { deleteTrip, updateTrip, type TripUpdatePayload } from "@/lib/api";
 import type { Trip } from "@/lib/types";
 import { formatAmountInput, normalizeAmountInput } from "@/lib/format";
 import { BottomSheet } from "@/components/bottom-sheet";
+import { useSelectedTrip } from "@/lib/selected-trip";
 
 interface Props {
   trip: Trip;
@@ -21,6 +23,8 @@ function toNum(v: string): number | null {
 
 export function TripEditSheet({ trip, onClose }: Props) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { setSelectedTripId } = useSelectedTrip();
   const [title, setTitle] = useState(trip.title ?? "");
   const [city, setCity] = useState(trip.city ?? trip.destination ?? "");
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
@@ -33,6 +37,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
   );
   const [notes, setNotes] = useState(trip.notes ?? "");
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const errors = useMemo(() => {
     const errs: string[] = [];
@@ -45,7 +50,7 @@ export function TripEditSheet({ trip, onClose }: Props) {
     return errs;
   }, [title, startDate, endDate, advance]);
 
-  const canSave = errors.length === 0 && !busy;
+  const canSave = errors.length === 0 && !busy && !deleting;
 
   const save = async (close: () => void) => {
     if (!canSave) return;
@@ -81,6 +86,28 @@ export function TripEditSheet({ trip, onClose }: Props) {
       toast.error(err instanceof Error ? err.message : "Errore nel salvataggio");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const remove = async (close: () => void) => {
+    if (busy || deleting) return;
+    const ok = window.confirm("Eliminare definitivamente questa trasferta e tutte le spese collegate?");
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteTrip(trip.id);
+      setSelectedTripId(null);
+      qc.removeQueries({ queryKey: ["trip", trip.id] });
+      qc.removeQueries({ queryKey: ["expenses", trip.id] });
+      qc.setQueryData<Trip[]>(["trips"], (prev) => prev?.filter((t) => t.id !== trip.id) ?? prev);
+      await qc.invalidateQueries({ queryKey: ["trips"] });
+      toast.success("Trasferta eliminata");
+      close();
+      navigate({ to: "/trips" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nell'eliminazione");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -206,6 +233,16 @@ export function TripEditSheet({ trip, onClose }: Props) {
               ))}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => remove(close)}
+            disabled={busy || deleting}
+            className="w-full h-12 rounded-xl border border-red-200 bg-red-50 text-red-700 font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleting ? "Eliminazione…" : "Elimina trasferta"}
+          </button>
         </div>
         </>
       )}
