@@ -484,7 +484,7 @@ export interface TravelDocumentUpload {
   role: TravelDocumentRole;
   filename?: string;
   client_id?: string;
-  /** Testo estratto lato client via OCR/pdfjs; se presente il file può essere omesso. */
+  /** Testo estratto lato client via OCR/pdfjs; viene inviato come fallback al PDF originale. */
   client_text?: string;
 }
 
@@ -504,20 +504,18 @@ export async function parseTravelDocuments(
   const form = new FormData();
   const metadata = uploads.map((u, i) => {
     const filename = u.filename ?? u.file.name;
-    const isPdf = u.file.type === "application/pdf" || /\.pdf$/i.test(filename);
     return {
       index: i,
       filename,
       role: u.role,
       client_id: u.client_id,
-      has_client_text: !isPdf && !!(u.client_text && u.client_text.length),
+      has_client_text: !!(u.client_text && u.client_text.length),
     };
   });
   uploads.forEach((u) => {
     const name = u.filename ?? u.file.name;
-    const isPdf = u.file.type === "application/pdf" || /\.pdf$/i.test(name);
     form.append("files[]", u.file, name);
-    form.append("client_texts[]", isPdf ? "" : (u.client_text ?? ""));
+    form.append("client_texts[]", u.client_text ?? "");
     form.append("client_filenames[]", name);
   });
   form.append("metadata", JSON.stringify(metadata));
